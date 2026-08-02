@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="DynaPort - a well-behaved listener port for a LAN HTTP/media server. Pick a free port, persist it, authorize it (firewall + URL ACL) with Firebug. A few calls, no source to vendor.">
+<title>DynaPort — a well-behaved listener port</title>
+<style>
+  :root {
+    --bg: #16181d; --panel: #1e2128; --line: #2e333d;
+    --ink: #e6e8ec; --dim: #9aa2ad; --accent: #4aa3df; --accent2: #57c47a;
+    --code-bg: #14161b; --cd: #d4d4d4; --ce: #ce9178; --ck: #569cd6; --cc: #6a9955;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6; font-size: 16px;
+  }
+  .wrap { max-width: 840px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.hero { text-align: center; padding: 24px 0 8px; }
+  .kicker { color: var(--dim); font-size: .8em; letter-spacing: .18em; text-transform: uppercase; margin: 0 0 10px; }
+  h1 { font-size: 2.4em; margin: 0 0 6px; letter-spacing: -.02em; }
+  h1 .dot { color: var(--accent); }
+  .tagline { color: var(--dim); font-size: 1.1em; max-width: 660px; margin: 0 auto; }
+  h2 { font-size: 1.35em; margin: 44px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  h3 { font-size: 1.02em; margin: 22px 0 6px; color: var(--ink); }
+  p { color: #cdd2da; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code { background: var(--code-bg); padding: .12em .4em; border-radius: 4px; font-size: .9em;
+    font-family: "Cascadia Code", "SF Mono", Consolas, "Liberation Mono", monospace; color: #d7dbe2; }
+  pre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px;
+    padding: 16px 18px; overflow-x: auto; margin: 14px 0; }
+  pre code { background: none; padding: 0; color: var(--cd); font-size: .86em; line-height: 1.55; }
+  .tok-k { color: var(--ck); } .tok-s { color: var(--ce); } .tok-c { color: var(--cc); }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 22px; margin: 18px 0; }
+  .lead-note { border-left: 3px solid var(--accent2); padding: 4px 0 4px 16px; margin: 16px 0; color: #cdd2da; }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: .92em; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--dim); font-weight: 600; }
+  td code { color: var(--accent); }
+  .api dt { color: var(--accent); font-family: "Cascadia Code", Consolas, monospace; font-size: .9em; margin-top: 10px; }
+  .api dd { margin: 2px 0 0; color: #cdd2da; }
+  .getit { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: baseline; }
+  .getit .repo { font-family: "Cascadia Code", Consolas, monospace; }
+  .badge { display: inline-block; font-size: .72em; letter-spacing: .06em; text-transform: uppercase;
+    border: 1px solid var(--line); border-radius: 20px; padding: 2px 10px; color: var(--dim); }
+  footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--dim); font-size: .88em; text-align: center; }
+  ul { color: #cdd2da; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <p class="kicker">Pattern &middot; a few Firebug calls</p>
+    <h1>Dyna<span class="dot">Port</span></h1>
+    <p class="tagline">A well-behaved listener port for a LAN HTTP/media server &mdash; so a busy port never strands a user. Pick it, persist it, authorize it.</p>
+  </header>
+
+  <h2>The problem</h2>
+  <p>If your app runs a small HTTP server to stream media to a device on the LAN, you have to pick a port for it. Hardcode 8080 and one day something else is already on 8080; the server won't start and the user is stuck editing config or filing a bug. Pick a different fixed number and you've only moved the collision.</p>
+
+  <p class="lead-note">The port doesn't need to be fixed. Many network media receivers are <strong>handed</strong> the full media URL &mdash; host <em>and</em> port &mdash; by the sender and simply fetch it; they never discover or guess the port. So the listener port is your own business, and the right answer is <em>whatever's free right now</em>.</p>
+
+  <p>Which leaves two jobs on Windows: <strong>(1) pick a free port</strong>, and <strong>(2) authorize it</strong> so a non-admin process can bind a LAN-reachable address and peers can reach it (a URL-ACL reservation + a firewall rule). Both are small, both are fiddly, and both are easy to get subtly wrong. That's what Firebug is for.</p>
+
+  <h2>Firebug — the library this uses</h2>
+  <p><strong>Firebug</strong> is a small, dependency-free (.NET BCL only, net48) Windows utility that does exactly those two jobs. It consolidates the port / firewall / URL-ACL patterns that otherwise get re-hand-rolled in every project into one tried-and-true place, as a referenceable library <em>and</em> a CLI. Apache-2.0 &mdash; reference it, or vendor the pieces you need.</p>
+
+  <div class="panel getit">
+    <span class="badge">Apache-2.0</span>
+    <span>Get it:&nbsp; <a class="repo" href="https://github.com/halrad-com/firebug">github.com/halrad-com/firebug</a></span>
+    <span class="dim"><code>Firebug.dll</code> (library) &middot; <code>firebug.exe</code> (CLI, self-elevating)</span>
+  </div>
+
+  <h3>What it provides</h3>
+  <table>
+    <thead><tr><th>Type</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><code>PortPicker</code></td><td>Choose a free listener port &mdash; probe one, pick the first free at/above a preferred value, or the first free adjacent pair; reuse a saved port when it's still free.</td></tr>
+      <tr><td><code>FirebugManager</code></td><td>Authorize a port &mdash; add/remove/check firewall rules (TCP&nbsp;&amp;&nbsp;UDP) and URL-ACL reservations; test elevation and firewall state; generate a manual .bat; open the Firewall UI.</td></tr>
+    </tbody>
+  </table>
+
+  <dl class="api">
+    <dt>PortPicker.IsFree(port) &middot; Pick(preferred) &middot; PickPair(preferred) &middot; Resolve(savedPort, preferred)</dt>
+    <dd>Probe a port; find the first free one; find the first free adjacent pair (server + side-channel); or reuse the saved port, falling back to a fresh pick.</dd>
+    <dt>FirebugManager.AddUrlAcl(port) &middot; AddTcpInboundRule(name, port) &middot; AddUdpInboundRule(name, port)</dt>
+    <dd>Reserve the URL ACL so a non-admin process may bind a LAN prefix, and open the firewall so peers can reach it. (Both need elevation.)</dd>
+    <dt>HasRule(name) &middot; HasUrlAcl(port) &middot; IsElevated() &middot; IsFirewallEnabled()</dt>
+    <dd>Check what's already in place before touching anything.</dd>
+    <dt>RemoveRule(name) &middot; RemoveUrlAcl(port) &middot; GenerateScript(name, port) &middot; OpenFirewallSettings()</dt>
+    <dd>Tear it down on uninstall/port-change, emit a manual .bat for users who prefer that, or just open the Windows Firewall UI.</dd>
+  </dl>
+
+  <p>Prefer to stay out of process? The same thing from an elevated shell:</p>
+  <pre><code>firebug add --name <span class="tok-s">"MyApp"</span> --port <span class="tok-s">8000</span> --urlacl
+firebug check --name <span class="tok-s">"MyApp"</span> --port <span class="tok-s">8000</span>
+firebug remove --name <span class="tok-s">"MyApp"</span> --port <span class="tok-s">8000</span></code></pre>
+
+  <h2>Putting it together — the calls</h2>
+  <pre><code><span class="tok-k">var</span> fb = <span class="tok-k">new</span> Firebug.FirebugManager();
+
+<span class="tok-c">// 1. Pick -- reuse the saved port if still free, else ladder up from 8000.</span>
+<span class="tok-k">int</span> port = Firebug.PortPicker.Resolve(settings.Port, preferred: <span class="tok-s">8000</span>, log: Log);
+
+<span class="tok-c">// 2. Persist -- keeps the URL ACL / firewall rule / bookmarks aligned to one number.</span>
+settings.Port = port;
+settings.Save();
+
+<span class="tok-c">// 3. Authorize that exact port (needs elevation -- see note).</span>
+fb.AddUrlAcl(port);                       <span class="tok-c">// non-admin process may then bind a LAN prefix</span>
+fb.AddTcpInboundRule(<span class="tok-s">"MyApp"</span>, port);      <span class="tok-c">// peers on the LAN can reach it</span>
+
+<span class="tok-c">// 4. Bind, then hand the receiver the URL. It never guesses the port.</span>
+listener.Prefixes.Add(<span class="tok-s">$"http://*:{port}/"</span>);
+<span class="tok-k">string</span> mediaUrl = <span class="tok-s">$"http://{GetLocalIP()}:{port}/"</span>;</code></pre>
+
+  <h2>Two things to get right</h2>
+  <ul>
+    <li><strong>Authorize the <em>bound</em> port, not a settings value.</strong> The firewall / URL-ACL and the listener must agree on one number &mdash; feed step 3 the port step 1 returned and step 2 saved, never a stale UI value.</li>
+    <li><strong>Persist, don't re-roll.</strong> The URL ACL and firewall rule are keyed to the port, so a port that changes every launch needs re-authorizing (admin) every launch. Pick once, keep it; only re-pick when the saved port is genuinely busy.</li>
+  </ul>
+
+  <h2>Windows footnote</h2>
+  <p>Serving a receiver on the LAN means binding a non-loopback prefix (<code>localhost</code> won't reach another device). That needs a <strong>URL-ACL</strong> reservation (or an elevated process) plus a firewall rule &mdash; exactly what <code>AddUrlAcl</code> + <code>AddTcpInboundRule</code> do. Run them from a small elevated helper (<code>ProcessStartInfo { Verb = "runas" }</code>) or via <code>firebug.exe</code> (which self-elevates), not from inside a non-elevated host process.</p>
+
+  <footer>
+    Uses <a href="https://github.com/halrad-com/firebug">Firebug</a> &mdash; small, BCL-only, Apache-2.0. Pick a port, authorize it, done.
+  </footer>
+
+</div>
+</body>
+</html>

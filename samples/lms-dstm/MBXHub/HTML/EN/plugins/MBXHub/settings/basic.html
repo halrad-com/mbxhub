@@ -1,0 +1,22 @@
+[% PROCESS settings/header.html %]
+
+<div class="prefDescription">[% "PLUGIN_MBXHUB_SETTINGS_DESC" | string %]</div>
+<br/>
+
+[% WRAPPER setting title="PLUGIN_MBXHUB_HOST" desc="PLUGIN_MBXHUB_HOST_DESC" %]
+	<input type="text" class="stdedit" name="pref_host" id="pref_host" value="[% prefs.pref_host | html %]" size="30" />
+[% END %]
+
+[% WRAPPER setting title="PLUGIN_MBXHUB_PORT" desc="PLUGIN_MBXHUB_PORT_DESC" %]
+	<input type="text" class="stdedit" name="pref_port" id="pref_port" value="[% prefs.pref_port | html %]" size="8" />
+[% END %]
+
+[% WRAPPER setting title="PLUGIN_MBXHUB_USERNAME" desc="PLUGIN_MBXHUB_USERNAME_DESC" %]
+	<input type="text" class="stdedit" name="pref_username" id="pref_username" value="[% prefs.pref_username | html %]" size="30" />
+[% END %]
+
+[% WRAPPER setting title="PLUGIN_MBXHUB_PASSWORD" desc="PLUGIN_MBXHUB_PASSWORD_DESC" %]
+	<input type="password" class="stdedit" name="pref_password" id="pref_password" value="[% prefs.pref_password | html %]" size="30" />
+[% END %]
+
+[% PROCESS settings/footer.html %]

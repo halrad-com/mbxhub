@@ -1,0 +1,16 @@
+{
+  "name": "mbxhub-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Minimal MCP stdio adapter for MBXHub — lets MCP clients control MusicBee through the Hub's REST API",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "start": "node index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Lyrion Music Server (LMS) plugin manifest.
+  Conventions cribbed from open-source LMS plugins (LastMix, Qobuz):
+  root element <module>, targetApplication id "SqueezeCenter" (historic name,
+  still the id LMS matches), name/description as string tokens from strings.txt.
+-->
+<module>
+	<name>PLUGIN_MBXHUB</name>
+	<version>0.1.0</version>
+	<targetApplication>
+		<id>SqueezeCenter</id>
+		<minVersion>8.0</minVersion>
+		<maxVersion>*</maxVersion>
+	</targetApplication>
+	<defaultState>enabled</defaultState>
+	<description>PLUGIN_MBXHUB_DESC</description>
+	<module>Plugins::MBXHub::Plugin</module>
+	<creator>MBXHub</creator>
+	<homepageURL>https://mbxhub.com</homepageURL>
+</module>

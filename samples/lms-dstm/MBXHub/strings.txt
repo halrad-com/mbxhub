@@ -1,0 +1,62 @@
+PLUGIN_MBXHUB
+	EN	MBXHub Library
+
+PLUGIN_MBXHUB_DESC
+	EN	Browse, search and stream a MusicBee library through MBXHub, plus a Don't Stop the Music provider backed by AutoQ stations. Read/stream/ask-only: never controls MusicBee playback.
+
+PLUGIN_MBXHUB_ALBUMS
+	EN	Albums
+
+PLUGIN_MBXHUB_ARTISTS
+	EN	Artists
+
+PLUGIN_MBXHUB_SEARCH
+	EN	Search
+
+PLUGIN_MBXHUB_PLAYLISTS
+	EN	Playlists
+
+PLUGIN_MBXHUB_STATIONS
+	EN	Stations
+
+PLUGIN_MBXHUB_DSTM_AUTOQ
+	EN	AutoQ (MBXHub)
+
+PLUGIN_MBXHUB_NO_STATION
+	EN	None (no station)
+
+PLUGIN_MBXHUB_STATION_SET
+	EN	AutoQ station selected
+
+PLUGIN_MBXHUB_STATION_CLEARED
+	EN	AutoQ station cleared
+
+PLUGIN_MBXHUB_EMPTY
+	EN	Nothing found — is MBXHub reachable?
+
+PLUGIN_MBXHUB_SETTINGS_DESC
+	EN	Point this plugin at a running MBXHub (the MusicBee plugin). Host and port are manual — there is no discovery. Username and password are optional and only needed when the Hub sits behind HTTP Basic Auth.
+
+PLUGIN_MBXHUB_HOST
+	EN	MBXHub host
+
+PLUGIN_MBXHUB_HOST_DESC
+	EN	Hostname or IP address of the machine running MusicBee + MBXHub (e.g. 192.168.1.42).
+
+PLUGIN_MBXHUB_PORT
+	EN	MBXHub port
+
+PLUGIN_MBXHUB_PORT_DESC
+	EN	TCP port of the MBXHub REST API (default 8080).
+
+PLUGIN_MBXHUB_USERNAME
+	EN	Username (optional)
+
+PLUGIN_MBXHUB_USERNAME_DESC
+	EN	HTTP Basic Auth username, applied to every request. Leave empty when the Hub is open on the LAN.
+
+PLUGIN_MBXHUB_PASSWORD
+	EN	Password (optional)
+
+PLUGIN_MBXHUB_PASSWORD_DESC
+	EN	HTTP Basic Auth password. Also embedded in stream and artwork URLs so players can fetch them.

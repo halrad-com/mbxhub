@@ -45,6 +45,8 @@ Project site: **mbxhub.com**
 
 ## Samples & Extensions
 
+Browse working examples in [`samples/`](samples/) — a browser control, a Logitech Media Server plugin, and an MCP server, all built on the public API.
+
 Companion projects here consume the **public MBXHub API**. Two naming lanes keep the ecosystem honest:
 
 - **`MBXHub.<Role>`** — clients of the hub contract (e.g. `MBXHub.GameBar`). Backend-neutral: they speak REST/WebSocket, not MusicBee directly.
