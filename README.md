@@ -54,7 +54,7 @@ Companion projects here consume the **public MBXHub API**. Two naming lanes keep
 
 - 🎮 **Game Bar Widget** (`MBXHub.GameBar`) — control MusicBee from the Xbox Game Bar overlay without leaving your game. A thin client of the hub's REST/WebSocket API.
 
-Every sample is **self-contained and offline-first** — no CDNs, no external services — unless the purpose of the integration is to provide a bridge to online services.
+Every sample is **self-contained and offline-first** — no CDNs, no external services — unless the purpose of a specific integration is to provide a bridge to online services.
 
 ---
 
