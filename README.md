@@ -15,8 +15,6 @@ This is the **public face** of MBXHub — releases and selected companion works,
 - **Releases** — packaged bundles under [`publish/`](publish/), ready to download and install.
 - **Samples & extensions** — self-contained companion projects that build on the public MBXHub API (see [below](#samples--extensions)).
 
-The MBXHub **core source is developed privately and is not published here.** This repository is where selected, public-facing works live or are synced — nothing secret, just curated.
-
 ---
 
 ## Highlights
