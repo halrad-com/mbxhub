@@ -30,7 +30,7 @@ This is the **public face** of MBXHub — samples and companion works. Hub relea
 
 ## Documentation
 
-MBXHub serves its own live documentation. It binds **port 80** when it's free, otherwise falls back to `8080` (then `8082`, …) — so reach the hub on whatever port it reports (the tray and dashboard show it). With the hub at `http://<hub>/`:
+MBXHub serves its own live documentation. It binds **port 80** when it's free, otherwise falls back to `8080` (then `8082`, …). To find or change the port, open the **MBXHub plugin settings** in MusicBee — **View → Preferences → Plugins**, then **Configure** for MBXHub; or **Tools → MBXHub → Settings**. With the hub reachable at `http://<hub>/`:
 
 | Endpoint | What |
 | --- | --- |
