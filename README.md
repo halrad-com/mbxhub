@@ -45,7 +45,7 @@ Project site: **mbxhub.com**
 
 ## Samples & Extensions
 
-Companion projects here consume the **public MBXHub API** — they never need the core source. Two naming lanes keep the ecosystem honest:
+Companion projects here consume the **public MBXHub API**. Two naming lanes keep the ecosystem honest:
 
 - **`MBXHub.<Role>`** — clients of the hub contract (e.g. `MBXHub.GameBar`). Backend-neutral: they speak REST/WebSocket, not MusicBee directly.
 - **`MBXHub.<Backend>`** — source adapters (`MBXHub.MusicBee` today). MusicBee is adapter #1, not the ceiling.
