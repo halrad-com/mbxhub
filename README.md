@@ -31,13 +31,13 @@ This is the **public face** of MBXHub — releases and selected companion works,
 
 ## Documentation
 
-MBXHub serves its own live documentation. With a hub running (default port `8080`):
+MBXHub serves its own live documentation. It binds **port 80** when it's free, otherwise falls back to `8080` (then `8082`, …) — so reach the hub on whatever port it reports (the tray and dashboard show it). With the hub at `http://<hub>/`:
 
 | Endpoint | What |
 | --- | --- |
-| `http://<hub>:8080/docs` | Full REST API reference |
-| `http://<hub>:8080/changelog` | Release notes |
-| `http://<hub>:8080/llms.txt` | Machine-readable API summary |
+| `http://<hub>/docs` | Full REST API reference |
+| `http://<hub>/changelog` | Release notes |
+| `http://<hub>/llms.txt` | Machine-readable API summary |
 
 Project site: **mbxhub.com**
 
