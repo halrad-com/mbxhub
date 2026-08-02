@@ -30,7 +30,19 @@ This is the **public face** of MBXHub — samples and companion works. Hub relea
 
 ## Documentation
 
-MBXHub serves its own live documentation. It binds **port 80** when it's free, otherwise falls back to `8080` (then `8082`, …). To find or change the port, open the **MBXHub plugin settings** in MusicBee — **View → Preferences → Plugins**, then **Configure** for MBXHub; or **Tools → MBXHub → Settings**. With the hub reachable at `http://<hub>/`:
+### Getting started
+
+Once the plugin is installed in MusicBee:
+
+1. **Open the dashboard** — **Tools → MBXHub → Dashboard**. The Now Playing dashboard and built-in pages work right away on this PC; nothing else needed to get going.
+2. **Open network access** so phones and other devices can reach it — **Tools → MBXHub → Settings → Firewall** (Step 4 of the [install guide](https://mbxhub.com)). This also confirms the **port** MBXHub is using.
+3. **Connect other devices** — scan the **QR code** on the dashboard, once the firewall is open.
+
+MBXHub binds **port 80** when it's free, otherwise `8080` (then `8082`, …); the current port is shown in **MBXHub Settings** (Tools → MBXHub → Settings, or Preferences → Plugins → Configure).
+
+### Live docs
+
+MBXHub serves its own documentation. With the hub reachable at `http://<hub>/`:
 
 | Endpoint | What |
 | --- | --- |
