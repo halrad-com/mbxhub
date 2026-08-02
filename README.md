@@ -60,6 +60,6 @@ Every sample is **self-contained and offline-first** — no CDNs, no external se
 
 ## About
 
-MBXHub is built by **HALRAD LLC**. Releases are signed.
+MBXHub is built by **HALRAD LLC**.
 
 © 2026 HALRAD LLC · haro@halrad.com
