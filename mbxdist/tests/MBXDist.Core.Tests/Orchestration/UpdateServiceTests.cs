@@ -106,6 +106,47 @@ public class UpdateServiceTests : IDisposable
         Assert.False(File.Exists(Path.Combine(_dir, "install", "mb.dll")));
     }
 
+    private Manifest ThirdPartyManifest(string sha) => new()
+    {
+        Id = "halrad.mbxhub.truedat.dependencies.ffmpeg",
+        Version = "7.1",
+        Resources =
+        {
+            new ResourceEntry
+            {
+                Filename = "ffmpeg.exe", Url = "ffmpeg/7.1/ffmpeg.exe", Sha256 = sha,
+                Target = new TargetRef { Root = "plugins", Path = "ffmpeg.exe" },
+                Authenticode = false   // third-party: we never sign it; sha256-only under the signed manifest
+            }
+        }
+    };
+
+    [Fact]
+    public async Task Third_party_resource_applies_without_signature()
+    {
+        const string content = "FFMPEGBYTES";
+        // Signature check reports untrusted/no-thumbprint — must not matter for authenticode:false.
+        var svc = Service(content, new SignatureResult(false, null));
+        var state = new LocalState();
+
+        var result = await svc.ApplyPackageAsync(ThirdPartyManifest(HashOf(content)), state, "t");
+
+        Assert.True(result.AllApplied);
+        Assert.Equal("7.1", state.Packages["halrad.mbxhub.truedat.dependencies.ffmpeg"].Version);
+    }
+
+    [Fact]
+    public async Task Third_party_resource_still_fails_on_sha_mismatch()
+    {
+        var svc = Service("FFMPEGBYTES", new SignatureResult(false, null));
+        var state = new LocalState();
+
+        var result = await svc.ApplyPackageAsync(ThirdPartyManifest("deadbeef"), state, "t");
+
+        Assert.True(result.AnyFailed);
+        Assert.Contains("sha256", result.Resources[0].Error);
+    }
+
     [Fact]
     public async Task Unmapped_target_root_is_reported()
     {

@@ -23,6 +23,11 @@ public sealed class ResourceEntry
     public long Size { get; set; }
     public TargetRef Target { get; set; } = new();
     public bool Locked { get; set; }
+
+    /// <summary>True (default) = the file must carry a valid Authenticode signature from the pinned cert.
+    /// False = third-party binary we do not sign (ffmpeg, essentia): integrity rides on Sha256 alone,
+    /// which is trustworthy because this manifest ships inside the signed client.</summary>
+    public bool Authenticode { get; set; } = true;
 }
 
 public sealed class TargetRef

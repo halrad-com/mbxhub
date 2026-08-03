@@ -4,11 +4,16 @@ Pinned cert: HALRAD LLC token, thumb `7267AEC2ABA9C2F85BEE3D3AC9544417B6694FB4` 
 Publish = stage a version. Promote = repoint the recommendation. Clients move only on promote+push.
 
 ## Publish a package version
-1. Sign the artifacts on the token: `signtool sign /fd sha256 /tr http://timestamp.digicert.com /td sha256 <file>`
-2. `tools\publish.ps1 -PackageDir core -Version <v> -TargetRoot musicbee-plugins -Files <signed files>`
+Signing is per-resource: release files you sign are verified signature+thumbprint; files you do not
+sign (ffmpeg, essentia, possibly truedat) are verified sha256-only under the signed client. Only
+`mbxdist.exe` MUST always be signed - it carries the catalog.
+
+1. Signed files: sign on the token FIRST (`signtool sign /fd sha256 /tr http://timestamp.digicert.com /td sha256 <file>`), then
+   `tools\publish.ps1 -PackageDir core -Version <v> -TargetRoot musicbee-plugins -Files <signed files>`
+2. Unsigned files: `tools\publish.ps1 ... -NoAuthenticode` (fragment gets `authenticode: false`).
 3. Paste `manifest-fragment.json` into `src\MBXDist.App\Embedded\manifests.<package-id>.json` (`locked: true` for in-use DLLs).
 
-Sign BEFORE publish — the manifest sha256 must hash the signed bytes.
+Sign BEFORE publish - the manifest sha256 must hash the final bytes.
 
 ## Promote
 1. Edit `Embedded\catalog.json` to the new version. Bump `AppInfo.Version`.

@@ -68,7 +68,9 @@ public sealed class UpdateService
                     continue;
                 }
 
-                if (!_policy.IsAcceptable(_sig.Check(staged)))
+                // Third-party binaries we don't sign (authenticode: false) are gated by SHA-256 alone —
+                // trustworthy because the manifest carrying that hash ships inside the signed client.
+                if (res.Authenticode && !_policy.IsAcceptable(_sig.Check(staged)))
                 {
                     outcomes.Add(new ResourceOutcome(res.Filename, targetPath, null, "signature not trusted or thumbprint not pinned"));
                     continue;

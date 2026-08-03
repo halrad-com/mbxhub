@@ -16,6 +16,7 @@ param(
     [Parameter(Mandatory = $true)][string]$Version,
     [Parameter(Mandatory = $true)][string[]]$Files,
     [string]$TargetRoot = "",
+    [switch]$NoAuthenticode,   # third-party / unsigned files: client verifies sha256 only
     [string]$FeedRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 )
 
@@ -35,12 +36,13 @@ foreach ($file in $Files) {
     $size = (Get-Item $dest).Length
 
     $resources += [ordered]@{
-        filename = $name
-        url      = "$PackageDir/$Version/$name"
-        sha256   = $hash
-        size     = $size
-        target   = [ordered]@{ root = $TargetRoot; path = $name }
-        locked   = $false
+        filename     = $name
+        url          = "$PackageDir/$Version/$name"
+        sha256       = $hash
+        size         = $size
+        target       = [ordered]@{ root = $TargetRoot; path = $name }
+        locked       = $false
+        authenticode = (-not $NoAuthenticode)
     }
     Write-Host ("staged  {0}  sha256={1}  size={2}" -f $name, $hash, $size)
 }
@@ -51,9 +53,13 @@ Write-Host ""
 Write-Host "wrote $fragmentPath"
 Write-Host "paste its resources into src\MBXDist.App\Embedded\manifests.<package-id>.json (set target/locked as needed)"
 Write-Host ""
-Write-Host "SIGN each binary on the token BEFORE committing:"
-foreach ($r in $resources) {
-    Write-Host ("  signtool sign /fd sha256 /tr http://timestamp.digicert.com /td sha256 `"{0}`"" -f (Join-Path $destDir $r.filename))
+if ($NoAuthenticode) {
+    Write-Host "unsigned resources (authenticode=false): client verifies sha256 only. Re-run publish AFTER any file change - the hash must match the final bytes."
+} else {
+    Write-Host "SIGN each binary on the token BEFORE publish (sha256 must hash the SIGNED bytes):"
+    foreach ($r in $resources) {
+        Write-Host ("  signtool sign /fd sha256 /tr http://timestamp.digicert.com /td sha256 `"{0}`"" -f (Join-Path $destDir $r.filename))
+    }
 }
 Write-Host ""
 Write-Host "publish does NOT change the recommendation - run promote.ps1 to repoint the embedded catalog."
