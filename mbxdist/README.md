@@ -3,6 +3,7 @@
 Local distribution & update client for the MBXHub family (`halrad.mbxhub.*`).
 
 One signed `mbxdist.exe`, two faces:
+
 - **Run it directly** — interactive console UX: shows installed vs recommended per package, prompts to apply.
 - **Invoke it** (ARIA / Task Scheduler / scripts) — verbs + flags + exit codes, no prompts.
 
@@ -29,4 +30,4 @@ Layout: `src/MBXDist.Core` (cross-platform engine, fully unit-tested) · `src/MB
 Test: `dotnet test mbxdist/MBXDist.sln`.
 
 Status: WIP — engine + client functional end-to-end against a local feed; awaiting real pinned thumbprint,
-published feed content, and release signing (hardware token).
+published feed content, and release signing.
