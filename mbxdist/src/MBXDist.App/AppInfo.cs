@@ -11,8 +11,10 @@ public static class AppInfo
     /// <summary>Well-known feed base URL (raw static host). Overridable via --feed.</summary>
     public const string DefaultFeedBaseUrl = "https://raw.githubusercontent.com/halrad-com/mbxhub/main/";
 
-    /// <summary>SHA-1 thumbprint(s) of the code-signing cert MBXDist trusts. PLACEHOLDER — replace with the real token cert thumbprint before signing/shipping.</summary>
-    public static readonly string[] PinnedThumbprints = { "0000000000000000000000000000000000000000" };
+    /// <summary>SHA-1 thumbprint(s) of the code-signing cert MBXDist trusts.
+    /// HALRAD LLC (Sectigo Public Code Signing CA R36, hardware token; valid to 2028-02).
+    /// Multiple entries supported for rotation — add the successor cert alongside before the cutover.</summary>
+    public static readonly string[] PinnedThumbprints = { "7267AEC2ABA9C2F85BEE3D3AC9544417B6694FB4" };
 
     /// <summary>Resource-name tokens for the embedded feed loader.</summary>
     public const string CatalogResourceSuffix = "catalog.json";
