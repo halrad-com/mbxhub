@@ -17,4 +17,7 @@ public static class AppInfo
     /// <summary>Resource-name tokens for the embedded feed loader.</summary>
     public const string CatalogResourceSuffix = "catalog.json";
     public const string ManifestResourcePrefix = "manifests.";
+
+    /// <summary>Self-hosted telemetry sink URL. Null = telemetry queues locally (size-capped) and is never sent.</summary>
+    public const string? TelemetrySinkUrl = null;
 }
