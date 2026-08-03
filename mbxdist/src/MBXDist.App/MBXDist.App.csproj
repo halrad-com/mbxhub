@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>MBXDist.App</RootNamespace>
+    <AssemblyName>mbxdist</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MBXDist.Core\MBXDist.Core.csproj" />
+    <ProjectReference Include="..\MBXDist.Platform.Windows\MBXDist.Platform.Windows.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Embedded\catalog.json" />
+    <EmbeddedResource Include="Embedded\manifests.halrad.mbxhub.core.json" />
+  </ItemGroup>
+</Project>

@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MBXDist.Platform.Windows", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MBXDist.Platform.Windows.Tests", "tests\MBXDist.Platform.Windows.Tests\MBXDist.Platform.Windows.Tests.csproj", "{2B1AC1F5-2B01-40F1-B385-F6ED8E745396}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MBXDist.App", "src\MBXDist.App\MBXDist.App.csproj", "{3E36E767-897D-400D-930D-4DADECCF1E18}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -71,6 +73,18 @@ Global
 		{2B1AC1F5-2B01-40F1-B385-F6ED8E745396}.Release|x64.Build.0 = Release|Any CPU
 		{2B1AC1F5-2B01-40F1-B385-F6ED8E745396}.Release|x86.ActiveCfg = Release|Any CPU
 		{2B1AC1F5-2B01-40F1-B385-F6ED8E745396}.Release|x86.Build.0 = Release|Any CPU
+		{3E36E767-897D-400D-930D-4DADECCF1E18}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3E36E767-897D-400D-930D-4DADECCF1E18}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3E36E767-897D-400D-930D-4DADECCF1E18}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3E36E767-897D-400D-930D-4DADECCF1E18}.Debug|x64.Build.0 = Debug|Any CPU
+		{3E36E767-897D-400D-930D-4DADECCF1E18}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3E36E767-897D-400D-930D-4DADECCF1E18}.Debug|x86.Build.0 = Debug|Any CPU
+		{3E36E767-897D-400D-930D-4DADECCF1E18}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3E36E767-897D-400D-930D-4DADECCF1E18}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3E36E767-897D-400D-930D-4DADECCF1E18}.Release|x64.ActiveCfg = Release|Any CPU
+		{3E36E767-897D-400D-930D-4DADECCF1E18}.Release|x64.Build.0 = Release|Any CPU
+		{3E36E767-897D-400D-930D-4DADECCF1E18}.Release|x86.ActiveCfg = Release|Any CPU
+		{3E36E767-897D-400D-930D-4DADECCF1E18}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
