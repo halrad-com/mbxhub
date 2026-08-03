@@ -16,4 +16,8 @@
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures\catalog.json" />
+    <EmbeddedResource Include="Fixtures\manifests.halrad.mbxhub.core.json" />
+  </ItemGroup>
 </Project>

@@ -1,0 +1,4 @@
+{ "id": "halrad.mbxhub.core", "version": "0.5.4.6", "displayName": "MBXHub",
+  "dependencies": [],
+  "resources": [ { "filename": "mb_MBXHub.dll", "url": "core/0.5.4.6/mb_MBXHub.dll",
+    "sha256": "deadbeef", "size": 10, "target": { "root": "musicbee-plugins", "path": "mb_MBXHub.dll" }, "locked": true } ] }
