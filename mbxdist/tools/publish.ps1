@@ -9,7 +9,7 @@
 #
 # Example:
 #   .\publish.ps1 -PackageDir core -Version 0.5.4.6 -TargetRoot musicbee-plugins `
-#       -Files ..\..\..\MBX\restfulbee\publish\mb_MBXHub.dll
+#       -Files <path-to-built>\mb_MBXHub.dll
 
 param(
     [Parameter(Mandatory = $true)][string]$PackageDir,
