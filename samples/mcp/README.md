@@ -22,7 +22,7 @@ npm install
 Register with Claude Code:
 
 ```
-claude mcp add mbxhub --env MBXHUB_URL=http://localhost:8080 -- node C:\Users\HARO\source\repos\MBX\restfulbee\mcp\index.ts
+claude mcp add mbxhub --env MBXHUB_URL=http://localhost:8080 -- node /path/to/mbxhub/samples/mcp/index.ts
 ```
 
 Or for Claude Desktop, add to `claude_desktop_config.json`:
