@@ -37,23 +37,26 @@ command the official documentation doesn't admit exists.
 The display clock defaults to UTC because the timezone offset ships unset (`tz: 0.0`) —
 NTP keeps the internal clock right, in the wrong zone.
 
-- Documented: `timeSync:YYYYMMDDHHMMSS` sets the clock immediately. Works.
+- Documented: `timeSync:YYYYMMDDHHMMSS` sets the clock immediately. Works — but read on
+  before you build automation around it.
 - **Undocumented find:** `setTimezone:<offset>` (e.g. `setTimezone:-7`) returns `OK` and
-  persists — `tz` moves from `0.0` to `-7.0` and survives. It appears in neither the
-  official PDF nor the community repos. **It is case-sensitive**: `setTimeZone` and
-  `timezone` both return `unknown command`.
-- **Confirmed after longer observation: the front display follows the *raw* internal
-  clock and ignores the stored timezone.** The tz value persists (`-7.0` held across
-  hours), but the device's periodic NTP sync sets the internal clock to UTC — and the
-  display reverts with it. `timeSync` fixes the display every time; NTP undoes it on its
-  next cycle — measured at **under an hour** between reverts on our unit.
-- **Reboot tested: no help.** After a power cycle the display came up UTC again with the
-  tz still stored — the display ignores the timezone unconditionally, boot included.
-- Durable app-free options, in order of appeal: (1) block the device's NTP (outbound
-  UDP 123) at the router — a manual `timeSync` then holds indefinitely; (2) a scheduled
-  `timeSync` push every 15–30 minutes (one `curl -k` line on a timer — cadence must beat
-  the sub-hour NTP cycle, a daily push is not enough). Or accept the app for the one
-  settings write it can apparently do that the API can't surface.
+  persists — `tz` moves from `0.0` to `-7.0` and survives reboots. It appears in neither
+  the official PDF nor the community repos. **It is case-sensitive**: `setTimeZone` and
+  `timezone` both return `unknown command`. (Its observable effect on the display: none
+  that we could measure — see below for why.)
+- **The real lesson, learned the hard way: check your network's time source before
+  blaming the device.** Our display kept "reverting to UTC" on a sub-hour cadence, and
+  survived reboots wrong — every heuristic said the device was ignoring its stored
+  timezone. It wasn't. Our managed switch was serving time as UTC; every sync cycle the
+  device obediently took the network's word for it, stomping our `timeSync` pushes within
+  the hour. Setting the switch to the local zone (PDT) fixed the display **permanently,
+  with zero device-side configuration** — while the API's internal clock keeps reporting
+  UTC (`getStatusEx` time is UTC base; the display applies the network-derived local
+  offset). Everything we measured was true; the conclusion we drew from it was wrong.
+- Practical order of operations for a wrong WiiM clock: (1) fix the time/zone your
+  switch/router/DHCP serves the LAN — almost certainly the actual problem; (2) `timeSync`
+  for a one-shot correction on an isolated network; (3) `setTimezone` exists if you want
+  the field set, but don't expect it to move the display.
 
 ## Gotchas worth knowing
 
@@ -66,6 +69,8 @@ NTP keeps the internal clock right, in the wrong zone.
 - `getPlayerStatus.mode` is a numeric source code (40 = line-in, 41 = Bluetooth,
   10 = network stream, 31 = Spotify Connect, ...). Community docs map most values;
   unmapped codes do turn up — display the raw number alongside your label.
+- A **desktop WiiM Home app** (Windows/macOS) exists as of spring 2026 at wiimhome.com/app —
+  noted for completeness; nothing in this workflow has needed it.
 - The vendor app talks to the device on a separate private channel (`communication_port`
   in `getStatusEx`) — some settings (initial Wi-Fi setup, certain onboarding) may only be
   reachable there or via the device's setup hotspot. Everything we've needed post-setup
