@@ -4,7 +4,7 @@
 
 MBXHub is a MusicBee plugin — paired with a lightweight Windows companion — that exposes your library and playback over a clean local **HTTP + WebSocket API**. Any device on your network can search, browse, control, and stream your music: web browsers, phones, scripts, home-automation, and companion apps all talk to the same hub.
 
-> **Prerelease — v0.5.4.5 (release candidate).** MBXHub is under active development. Expect capability and polish; not stability guarantees.
+> **Prerelease — v0.5.x.x (release candidate).** MBXHub is under active development. Expect capability and polish; not stability guarantees.
 
 ---
 
@@ -38,7 +38,7 @@ Once the plugin is installed in MusicBee:
 2. **Open network access** so phones and other devices can reach it — **Tools → MBXHub → Settings → Firewall** (Step 4 of the [install guide](https://mbxhub.com)). This also confirms the **port** MBXHub is using.
 3. **Connect other devices** — scan the **QR code** on the dashboard, once the firewall is open.
 
-MBXHub binds **port 80** when it's free, otherwise `8080` (then `8082`, …); the current port is shown in **MBXHub Settings** (Tools → MBXHub → Settings, or Preferences → Plugins → Configure).
+MBXHub uses **port 8080** by default, falling back to `8081` if that's taken. You can set it to **80** or any other port you like. The current port is shown in **MBXHub Settings** (Tools → MBXHub → Settings, or Preferences → Plugins → Configure).
 
 ### Live docs
 
@@ -58,14 +58,10 @@ Project site: **mbxhub.com**
 
 Browse working examples in [`samples/`](samples/) — a browser control, a Logitech Media Server plugin, and an MCP server, all built on the public API.
 
-Companion projects here consume the **public MBXHub API**. Two naming lanes keep the ecosystem honest:
+Companion projects here use the **public MBXHub API**. Names follow one of two patterns:
 
-- **`MBXHub.<Role>`** — clients of the hub contract (e.g. `MBXHub.GameBar`). Backend-neutral: they speak REST/WebSocket, not MusicBee directly.
-- **`MBXHub.<Backend>`** — source adapters (`MBXHub.MusicBee` today). MusicBee is adapter #1, not the ceiling.
-
-**In progress:**
-
-- 🎮 **Game Bar Widget** (`MBXHub.GameBar`) — control MusicBee from the Xbox Game Bar overlay without leaving your game. A thin client of the hub's REST/WebSocket API.
+- **`MBXHub.<Role>`** — apps that control a hub over the API (they speak REST/WebSocket, not MusicBee directly).
+- **`MBXHub.<Backend>`** — adapters that connect a music source to the hub (`MBXHub.MusicBee` today; others can follow).
 
 Every sample is **self-contained and offline-first** — no CDNs, no external services — unless the purpose of a specific integration is to provide a bridge to online services.
 
