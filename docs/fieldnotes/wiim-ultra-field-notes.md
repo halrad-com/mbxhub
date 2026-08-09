@@ -32,6 +32,65 @@ command the official documentation doesn't admit exists.
 **Gotcha: `Title`, `Artist`, `Album` come back hex-encoded** (`556E6B6E6F776E` =
 "Unknown"). Decode hex → UTF-8 before display.
 
+- A third read earns its keep: `getMetaInfo` returns richer track metadata (plain text,
+  not hex) — but not on every source. Use `getPlayerStatus`'s tags as the change signal
+  and call `getMetaInfo` only when the track actually changes.
+
+## The command set, by verification status
+
+Everything below ran against the live unit. "Proven in production" means it's been driving
+the device daily through our own control page; "bench-verified" means a one-shot test
+returned the documented result; anything we haven't fired stays labeled community-documented.
+
+**Proven in production** (control page, real daily use):
+
+| Command | Notes |
+|---|---|
+| `setPlayerCmd:pause` / `:resume` | distinct verbs, not a toggle — track your own state |
+| `setPlayerCmd:prev` / `:next` | |
+| `setPlayerCmd:vol:N` | 0–100, integer |
+| `setPlayerCmd:mute:0\|1` | |
+| `setPlayerCmd:seek:N` | seconds |
+| `setPlayerCmd:switchmode:<name>` | source switch — `wifi`, `bluetooth`, `optical`, `line-in`, … Optical and Bluetooth both proven live |
+| `getMetaInfo` | see above |
+
+Write commands answer `OK` as **plain text, not JSON** — judge success by HTTP status,
+not by parsing the body.
+
+**Bench-verified reads** (2026-08, one-shot):
+
+| Command | Result on our unit |
+|---|---|
+| `getPresetInfo` | `{"preset_num":0,"preset_list":[]}` — data-driven preset list (names + count); empty just means none configured |
+| `EQGetList` | 24 named EQ presets (`Flat`, `Acoustic`, `Bass Booster`, … `Vocal Booster`) |
+| `getShutdownTimer` | `0` = no sleep timer pending |
+| `getChannelBalance` | `0` = centered (range −1.0…1.0) |
+| `getNewAudioOutputHardwareMode` | `{"hardware":"1","source":"0","audiocast":"0"}` — hardware `1` = optical out on our unit; enum only partially mapped publicly |
+| `getbthistory` | paired-device list with `role` — see the Bluetooth note below |
+
+**Measured but inconclusive:**
+
+- `EQGetStat` returned `{"status":"Failed"}` where community docs promise
+  `{"EQStat":"On"/"Off"}`. Plausibly "Failed" *is* the answer when the EQ subsystem is
+  inactive — don't wire UI state to this reply until you've re-tested with EQ actually on.
+- `Squeezelite:getState` returned bare `Failed` — the Lyrion/LMS integration is absent or
+  disabled on this firmware.
+
+**Still community-documented only** (not yet fired here): `MCUKeyShortClick:N` (fire
+preset N), `EQOn`/`EQOff`/`EQLoad:<name>`, `setPlayerCmd:loopmode:<n>` (shuffle/repeat),
+`setShutdownTimer:<sec>`, `setChannelBalance:<f>`, `LED_SWITCH_SET`, `Button_Enable_SET`,
+the BT write family. Verify each once before building UI on it — LinkPlay command behavior
+varies across firmware.
+
+## Bluetooth goes both ways
+
+`getbthistory` on our unit listed a paired BT speaker with `role: "Audio Sink"` — the
+Ultra doesn't just *receive* Bluetooth, it can **transmit to BT speakers and headphones**.
+The whole management surface is API-reachable: `startbtdiscovery:<sec>`,
+`getbtdiscoveryresult`, `connectbta2dpsynk:<mac>`, `disconnectbta2dpsynk:<mac>`. We've
+verified the read side only; treat the connect/disconnect writes with the usual
+verify-before-wire care since they re-route audio.
+
 ## Setting the clock without the app
 
 The display clock defaults to UTC because the timezone offset ships unset (`tz: 0.0`) —
