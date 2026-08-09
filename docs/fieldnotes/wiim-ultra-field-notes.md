@@ -42,10 +42,16 @@ NTP keeps the internal clock right, in the wrong zone.
   persists — `tz` moves from `0.0` to `-7.0` and survives. It appears in neither the
   official PDF nor the community repos. **It is case-sensitive**: `setTimeZone` and
   `timezone` both return `unknown command`.
-- Caveat we're still watching: the front display appears to follow the *raw* internal
-  clock; after a timezone write the device NTP-resynced to UTC once and the display
-  followed. A `timeSync` push corrected it and it has held since. If a device fights you:
-  re-push `timeSync`, or schedule a daily push, or block the device's NTP at the router.
+- **Confirmed after longer observation: the front display follows the *raw* internal
+  clock and ignores the stored timezone.** The tz value persists (`-7.0` held across
+  hours), but the device's periodic NTP sync sets the internal clock to UTC — and the
+  display reverts with it. `timeSync` fixes the display every time; NTP undoes it on its
+  next cycle. Untested: whether the stored tz gets applied at boot (a reboot may settle it).
+- Durable app-free options, in order of appeal: (1) a scheduled `timeSync` push (cron /
+  Windows scheduled task / your home-automation hub — it's one `curl -k` line per day),
+  (2) block the device's NTP (outbound UDP 123) at the router so the manual set holds,
+  (3) test the reboot hypothesis above and report back — if tz applies at boot, one
+  reboot ends the fight.
 
 ## Gotchas worth knowing
 
