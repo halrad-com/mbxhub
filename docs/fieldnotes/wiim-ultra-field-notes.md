@@ -36,6 +36,11 @@ command the official documentation doesn't admit exists.
   not hex) — but not on every source. Use `getPlayerStatus`'s tags as the change signal
   and call `getMetaInfo` only when the track actually changes.
 
+> **Full command reference:** the complete measured command table — including the
+> undocumented EQ getters/setters and every false-OK we caught — lives in
+> [WiiM HTTP API reference](wiim-http-api-reference.md). The table below is the
+> production-proven core.
+
 ## The command set, by verification status
 
 Everything below ran against the live unit. "Proven in production" means it's been driving

@@ -8,6 +8,7 @@ because the next person (often us, six months later) shouldn't have to rediscove
 | Note                                                | One-liner                                                                                                  |
 | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | [WiiM Ultra field notes](wiim-ultra-field-notes.md) | Owning a WiiM Ultra over its HTTP API — no vendor app required, including an undocumented timezone command |
+| [WiiM HTTP API reference](wiim-http-api-reference.md) | Every command as measured — verified/accepted/false-OK/dead, undocumented EQ band read+write, enum tables |
 | [Devialet Phantom field notes](devialet-phantom-field-notes.md) | The Phantom's local REST API — source switching by playing, firmware field drift, and the transient-mute trap |
 | [Windows volume steps](windows-volume-steps.md)     | Why volume keys move in 2% jumps, why the registry hack is a myth, and every real way to get finer control |
 | [Bench tools](bench-tools.md)                       | The tools that keep earning their place on the bench                                                       |
