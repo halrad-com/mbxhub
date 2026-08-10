@@ -65,7 +65,7 @@ LV2 plugin). The EQ state is **per-source** (`source_name` rides every EQ reply)
 | `EQOn` / `EQOff` | enable/disable | verified (round-trip via `EQGetBand`) |
 | `EQLoad:<name>` | load preset; **reply echoes the full EQ state** (bands in dB) | verified |
 | `EQGetBand` | **UNDOCUMENTED.** Full state getter: `EQStat` On/Off, preset `Name`, 10 band values (0–100 scale), `channelMode`, `EQLevel`, `source_name`. Works while EQ is off — the poll target | verified |
-| `EQSetBand:{"EQBand":[{"index":N,"value":V}]}` | **UNDOCUMENTED.** Custom band write — JSON payload, URL-encoded; `index` 0–9 (31 Hz→16 kHz), `value` 0–100 (50 = flat). Clears preset `Name` to `""` (= custom) | verified (round-trip) |
+| `EQSetBand:{"EQBand":[{"index":N,"value":V}]}` | **UNDOCUMENTED.** Custom band write — JSON payload, URL-encoded; `index` 0–9 (31 Hz→16 kHz), `value` 0–100 (50 = flat). Clears preset `Name` to `""` (= custom). The JSON's *internal colons* may stay literal — A/B-verified: a payload with unencoded `:` round-tripped identically to the fully-encoded form | verified (round-trip) |
 | `EQSetBand:0:55` / `EQSetBand:band31hz:55` | simpler syntaxes | **false-OK** — accepted, no effect |
 | `EQGetStat` | supposed On/Off getter | **dead** — `{"status":"Failed"}` always, even with EQ on. Use `EQGetBand` |
 
