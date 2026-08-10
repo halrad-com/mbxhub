@@ -13,8 +13,8 @@ because the next person (often us, six months later) shouldn't have to rediscove
 | [Windows volume steps](windows-volume-steps.md)     | Why volume keys move in 2% jumps, why the registry hack is a myth, and every real way to get finer control |
 | [Bench tools](bench-tools.md)                       | The tools that keep earning their place on the bench                                                       |
 
-Runnable companions live under [`samples/`](../../samples/) — see
-[`samples/wiim-bench/`](../../samples/wiim-bench/) for the live device watcher used in the
+Runnable companions live beside the notes — see
+[`wiim-samples/`](wiim-samples/) for the live device watcher used in the
 WiiM notes.
 
 
