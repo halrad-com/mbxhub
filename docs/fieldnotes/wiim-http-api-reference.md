@@ -135,6 +135,23 @@ No API-side mitigation found yet.
 | `multiroom:SlaveMute:<slaveIP>:0\|1` | master | per-slave mute | verified (round-trip) |
 | `multiroom:Ungroup` | master | dissolve the group | verified — `slaves:0` |
 
+More community-documented verbs, not yet fired here: `multiroom:SlaveKickout:<slaveIP>`
+(remove one follower), `setMultiroomSrc:eth0|wifi` (force wired/wireless sync routing),
+`setPlayerCmd:groupVol:0-100` (group-wide volume), and `ConnectMasterAp:JoinGroupMaster:eth0`
+as a leave-group form.
+
+**The `multiroom:` prefix false-OKs ANY sub-verb** — `multiroom:getNonsenseXyz` answers a
+cheerful `OK` on our firmware. The false-OK rule applies at the command-family level, not
+just per command: an `OK` from anything `multiroom:` proves only that the prefix parsed.
+
+Two app-side features we hunted and could NOT reach over `httpapi.asp` (probes returned
+`unknown command`; official PDF, community repos, and the forum's API list all silent):
+**Simultaneous Line Out** (Ultra-only beta — line-out mirrors while optical/coax is
+selected) and **Group Audio Delay** (per-group latency trim under Audio Input on the group
+lead — the knob that would tune the passthrough-vs-slave echo). Both presumably live on
+the app's private channel; the port-mirror capture rig is the honest next step if either
+matters enough.
+
 Gotchas measured on the way:
 
 - **The slave's `getPlayerStatus.status` lies.** It reported `stop` while audibly
