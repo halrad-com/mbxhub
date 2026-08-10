@@ -92,6 +92,18 @@ preset N), `EQOn`/`EQOff`/`EQLoad:<name>`, `setPlayerCmd:loopmode:<n>` (shuffle/
 the BT write family. Verify each once before building UI on it — LinkPlay command behavior
 varies across firmware.
 
+## Multiroom actually carries the inputs
+
+The question that mattered here: can a second WiiM (a Sound Lite, wired) take the
+Ultra's **optical-in** audio over the LAN — vendor-app-free — while the Ultra keeps
+feeding its own optical-out chain? **Yes.** One join command at the slave
+(`ConnectMasterAp:JoinGroupMaster:eth<masterIP>:wifi0.0.0.0`), read back at the master
+(`multiroom:getSlaveList` — the only truth; the slave's own `status` field reports
+`stop` while audibly playing), and both outputs run at once. The passthrough and the
+LAN slave sit slightly out of sync — a "big empty room" echo if both are in earshot,
+unnoticeable in separate rooms. Full verb table, round-trip results and gotchas in the
+[command reference](wiim-http-api-reference.md).
+
 ## Bluetooth goes both ways
 
 `getbthistory` on our unit listed a paired BT speaker with `role: "Audio Sink"` — the

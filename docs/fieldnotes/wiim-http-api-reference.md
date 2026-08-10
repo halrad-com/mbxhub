@@ -115,6 +115,41 @@ The Ultra transmits to BT sinks as well as receiving. Whole surface is API-reach
 | `getbtdiscoveryresult` | `{"num":…,"scan_status":…,"list":[{name, ad, role, rssi}]}` | verified — found a nearby TV as sink, rssi −73 |
 | `connectbta2dpsynk:<mac>` / `disconnectbta2dpsynk:<mac>` | route audio to/from a BT sink | not fired — re-routes audio; verify in a bench window |
 
+### Multiroom (bench-verified 2026-08-10, Ultra master + Sound Lite V2 slave, both wired)
+
+The headline finding first: **an input source fans out.** With the Ultra playing its
+optical-in, the grouped slave renders the same audio over the LAN while the Ultra's
+optical-out passthrough keeps feeding its own chain — both outputs at once (verified by
+ear). A network stream relays too. One measured caveat: the passthrough output and the
+multiroom slave are **slightly out of sync** — perceptually a "big empty room" echo when
+both are in earshot (a small offset, slap-echo scale, not a gross lag). The passthrough
+is direct hardware, the slave is a buffered LAN relay, and the group's sync domain
+doesn't include the passthrough. Fine in separate rooms; expect the echo in one room.
+No API-side mitigation found yet.
+
+| Command | Fired at | Effect | Status |
+|---|---|---|---|
+| `ConnectMasterAp:JoinGroupMaster:eth<masterIP>:wifi0.0.0.0` | **slave** | join the master's group | verified — master's `getSlaveList` goes to `slaves:1`, slave flips to `type:1`/`mode:99` |
+| `multiroom:getSlaveList` | master | group truth: slave name/uuid/ip/volume/mute | verified — **this is the only success signal** |
+| `multiroom:SlaveVolume:<slaveIP>:N` | master | per-slave volume | verified (round-trip via `getSlaveList`) |
+| `multiroom:SlaveMute:<slaveIP>:0\|1` | master | per-slave mute | verified (round-trip) |
+| `multiroom:Ungroup` | master | dissolve the group | verified — `slaves:0` |
+
+Gotchas measured on the way:
+
+- **The slave's `getPlayerStatus.status` lies.** It reported `stop` while audibly
+  playing — both for network relay and optical relay. Judge the slave by the master's
+  `getSlaveList`, the slave's `vendor` field, and its position counter tracking the
+  master; never by its `status`.
+- **Re-joining does not preserve the group-set slave volume** (came back at a different
+  level than the pre-ungroup setting). Re-assert `SlaveVolume` after every join.
+- A silent source is indistinguishable from a broken relay — the master's position
+  counter freezes when optical-in has no signal. Confirm the source is actually playing
+  before concluding anything about the group.
+- Discovery: both units answer SSDP `MediaRenderer:1` (`description.xml` on :49152) —
+  that plus `getStatusEx` (`project` field names the model) is a clean app-free way to
+  find LinkPlay devices and their IPs.
+
 ### Clock / timers / alarms
 
 | Command | Effect | Status |
