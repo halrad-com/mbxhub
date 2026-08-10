@@ -144,13 +144,33 @@ as a leave-group form.
 cheerful `OK` on our firmware. The false-OK rule applies at the command-family level, not
 just per command: an `OK` from anything `multiroom:` proves only that the prefix parsed.
 
-Two app-side features we hunted and could NOT reach over `httpapi.asp` (probes returned
-`unknown command`; official PDF, community repos, and the forum's API list all silent):
-**Simultaneous Line Out** (Ultra-only beta — line-out mirrors while optical/coax is
-selected) and **Group Audio Delay** (per-group latency trim under Audio Input on the group
-lead — the knob that would tune the passthrough-vs-slave echo). Both live on the app's
-private channel; the port-mirror capture rig is the honest next step if either matters
-enough.
+Two app-side features we could NOT reach with the commands we *know*: **Simultaneous Line
+Out** (Ultra-only beta — line-out mirrors while optical/coax is selected) and **Group
+Audio Delay** (per-group latency trim under Audio Input on the group lead — the knob that
+would tune the passthrough-vs-slave echo). Framing matters here: **both are reachable —
+the vendor Android app sets them over the LAN, which is proof the wire format exists.**
+What we lack is the command name, not the capability. Probes returned `unknown command`,
+and the official PDF, community repos, and the forum's API list are all silent — so the
+gap is in *our* knowledge, not in the device. The port-mirror capture rig (watch the app
+flip the toggle) is the definitive way to recover the command; not yet a priority.
+
+**Group Audio Delay architecture** (observed in the app, 2026-08-10 — not yet API-reachable
+but decision-grade for anyone building a multiroom pair): the delay is **tunable on the
+Bluetooth and aux-in paths — measured presets 70 ms (low) and 150 ms (med) — but the
+ethernet multiroom link is NOT tunable at all; it sits at a high fixed value (~800 ms).**
+That is not a defect — it is the cost of bulletproof multi-device sync: a big fixed buffer
+is what keeps every ethernet follower locked to the lead with zero drift, while BT/aux are
+single-path with no group to hold, so they can run low-latency and expose the 70/150 ms
+presets.
+
+Consequence for using the pair as a **2.1 / spatial setup** (one speaker as a `.1` or a
+fill): the ethernet follower lands ~800 ms *behind* the lead's direct passthrough, and you
+**cannot pull it forward** — the ethernet delay floors high. Aligning the pair therefore
+means delaying the *mains* upstream to meet the follower. That is fine for **music** (an
+absolute 800 ms latency is inaudible on a song) but a **non-starter for anything with
+video** — 800 ms is catastrophic lip-sync. Rule of thumb: **ethernet multiroom for
+music-only spatial use; if the `.1` must be low-latency (TV, gaming), the tunable BT/aux
+path to that speaker is the architecture, not ethernet.**
 
 For Simultaneous Line Out we went one step further than name-guessing: a **differential
 capture** — full `getStatusEx` + `getNewAudioOutputHardwareMode` snapshots before and
