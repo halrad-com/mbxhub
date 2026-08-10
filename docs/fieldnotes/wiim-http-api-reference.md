@@ -148,9 +148,21 @@ Two app-side features we hunted and could NOT reach over `httpapi.asp` (probes r
 `unknown command`; official PDF, community repos, and the forum's API list all silent):
 **Simultaneous Line Out** (Ultra-only beta — line-out mirrors while optical/coax is
 selected) and **Group Audio Delay** (per-group latency trim under Audio Input on the group
-lead — the knob that would tune the passthrough-vs-slave echo). Both presumably live on
-the app's private channel; the port-mirror capture rig is the honest next step if either
-matters enough.
+lead — the knob that would tune the passthrough-vs-slave echo). Both live on the app's
+private channel; the port-mirror capture rig is the honest next step if either matters
+enough.
+
+For Simultaneous Line Out we went one step further than name-guessing: a **differential
+capture** — full `getStatusEx` + `getNewAudioOutputHardwareMode` snapshots before and
+after toggling the feature ON in the app. Result: **byte-identical except the clock.**
+The state is not surfaced anywhere on the public API, so neither reading nor setting it
+app-free is possible on this firmware. (A brief output pause was observed at toggle time
+but coincided with a possible track change — unconfirmed, so not claimed.) With the
+toggle enabled, the optical passthrough and the multiroom relay verifiably keep running;
+the analog line-out mirror itself is presumed live per the feature's contract but was not
+audibly verified (nothing on the bench was wired to it). If it holds, that is **three
+simultaneous outputs** — passthrough, LAN multiroom, analog — from one input. The setting
+persists, so a one-time app toggle then permanent API-driven use is a workable pattern.
 
 Gotchas measured on the way:
 
