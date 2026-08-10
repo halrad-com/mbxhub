@@ -102,6 +102,7 @@ No API to *create* presets has surfaced — as far as we know that remains app-s
 | Command | Effect | Status |
 |---|---|---|
 | `getChannelBalance` / `setChannelBalance:F` | stereo balance −1.0…1.0 (0 = center) | verified (round-trip 0 → 0.2 → 0) |
+| `getSpdifOutSwitchDelayMs` / `setSpdifOutSwitchDelayMs:N` | SPDIF/optical **sample-rate-switch delay**, ms (app range 0–3000, 0 = off) — pads silence over the DAC's clock re-lock when the source rate changes, so the downstream DAC doesn't clip the start of a track | verified (round-trip 0 → 150 → 0) |
 | `setAudioOutputHardwareMode:N` | select output route | accepted — fired at current value only (actually switching would have cut our audio) |
 
 ### Bluetooth (both directions)
