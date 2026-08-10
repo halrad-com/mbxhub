@@ -6,6 +6,13 @@ actually happened. Companion to the narrative
 [WiiM Ultra field notes](wiim-ultra-field-notes.md); read that first for transport
 basics (HTTPS-only, self-signed cert, hex-encoded metadata).*
 
+*This reference is proven in software, not just on the bench: it is the command contract
+behind **MBXHub's WiiM charm** — an HTML control surface (`/pages/wiim.html` on your hub)
+with transport, volume, source switching, shuffle/repeat, saved presets, a full 10-band
+EQ editor, and device status, all through the hub's device proxy. Only commands marked
+**verified** below are wired there, and the charm judges every write by read-back — the
+same false-OK discipline this document preaches.*
+
 All commands go to:
 
 ```

@@ -7,6 +7,11 @@ The goal: full control of a WiiM Ultra from scripts and our own pages — never 
 Verdict: **achievable**. Every control we've needed so far is API-reachable, including one
 command the official documentation doesn't admit exists.
 
+Where this ended up: these notes (and the [command reference](wiim-http-api-reference.md)
+they grew into) became **MBXHub's WiiM charm** — a self-contained HTML control surface
+served by the hub at `/pages/wiim.html`, driving the device through the hub's proxy.
+The bench work below is the reason every control on that page is one we trust.
+
 ## The API surface
 
 - **HTTPS only.** The Ultra refuses plain HTTP outright (older LinkPlay devices served it;
