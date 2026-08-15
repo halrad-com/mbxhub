@@ -1,6 +1,8 @@
 # Fosi Audio S3 — field notes
 
-> **STATUS: PRE-BENCH (opened 2026-08-15). Nothing here is measured yet.**
+> **STATUS: PRE-BENCH (opened 2026-08-15). Nothing about the S3 itself is measured yet.**
+> The one measured section is §0, and it is measured on *other* hardware — the LinkPlay
+> devices we already own, used as a yardstick to hold the S3 against when it arrives.
 > Every other note in this directory states bench-verified truth. This one does not, yet —
 > it is the desk-research file opened *before* the unit reaches the bench, so the probing
 > is planned rather than improvised. Each claim below carries its provenance:
@@ -17,6 +19,46 @@ AirPlay 2 / Google Cast / DLNA / Spotify Connect / TIDAL Connect.
 **Why we care:** it is a candidate for an MBXHub *charm* — a local-network control page served
 by the hub, driving the device directly over its own interfaces with no vendor cloud and no
 vendor app. The WiiM notes in this directory are the template for what "owned" looks like.
+
+---
+
+## 0. The yardstick — what a LinkPlay device looks like from outside **[measured]**
+
+Before the S3 arrived, the read-only probe was written and run against two known LinkPlay
+devices (a WiiM Ultra and a WiiM Sound Lite) to validate the tooling and, more usefully, to
+establish what "this is a stock LinkPlay box" looks like from the network. Measured
+2026-08-15, both devices identical in profile:
+
+| Probe | Result on stock LinkPlay firmware |
+| --- | --- |
+| TCP **80** | **closed** |
+| TCP 443, 8443 | open (HTTPS, self-signed) |
+| TCP 8819 | open — LinkPlay's private/app port |
+| TCP 49152 | open — UPnP device description |
+| TCP 8008 / 8009 | open — Google Cast |
+| TCP 22, 23, 5000, 8080, 8888, 1400, 7000 | closed |
+| `http://<ip>/httpapi.asp?command=getStatusEx` | **no answer** (connection refused — there is no :80) |
+| `https://<ip>/httpapi.asp?command=getStatusEx` | **HTTP 200**, full status JSON |
+| UPnP description | `http://<ip>:49152/description.xml` |
+| UPnP services | `AVTransport:1`, `ConnectionManager:1`, `RenderingControl:1`, plus vendor `urn:schemas-wiimu-com:service:PlayQueue:1` and `urn:schemas-tencent-com:service:QPlay:1` |
+| `manufacturer` in the description XML | `Linkplay Technology Inc.` |
+
+**This gives us a one-glance discriminator for the S3.** Fosi's own documentation puts
+`settings.fcgi` on **plain HTTP at the device IP** — and stock LinkPlay firmware does not serve
+port 80 at all. So:
+
+- **Port 80 open, 8819 closed, `manufacturer` not Linkplay** → hypothesis **B**: Fosi replaced the
+  application layer. The WiiM reference does not transfer; the charm is built on UPnP + whatever
+  `settings.fcgi` exposes.
+- **8819 open and `httpapi.asp` answering over HTTPS** → hypothesis **A**: it is a LinkPlay box
+  wearing a Fosi app, and most of [wiim-http-api-reference.md](wiim-http-api-reference.md) applies.
+- **Both** (80 open *and* 8819 open) → the most interesting outcome: a Fosi layer added *over* a
+  live LinkPlay stack, meaning two independent control surfaces, one of them undocumented.
+
+Note also what the baseline says about the plane ranking below: **every** LinkPlay device already
+exposes `AVTransport` + `RenderingControl` on :49152. If the S3 does the same — and vendor-confirmed
+DLNA says it should — then a UPnP-based charm works regardless of which hypothesis wins. That is the
+argument for building the renderer charm first and treating any vendor API as an enhancement.
 
 ---
 
@@ -120,7 +162,46 @@ anything that speaks UPnP MediaRenderer would inherit it.
 
 ---
 
-## 5. Rules carried over from the WiiM work
+## 5. Day one on the bench — the read-only ladder
+
+A scripted read-only sweep exists and has been validated against two LinkPlay devices (it
+produced §0). It runs SSDP discovery, the port plan, the `httpapi.asp` A-vs-B test, the vendor
+web-surface fetch, and the UPnP description parse in one pass, saving every response verbatim.
+
+The same ladder by hand, in order, if the script is not available. Every step is a GET; nothing
+below changes device state:
+
+```sh
+# 0. find it (and note its MAC - the module OUI is a strong platform hint)
+arp -a
+
+# 1. what answers? (80 vs 8819 is the discriminator from section 0)
+#    any port scanner, or just try the two that matter:
+curl -sS -m 5 -o /dev/null -w '%{http_code}\n' http://<ip>/
+curl -sS -m 5 -k -o /dev/null -w '%{http_code}\n' https://<ip>/
+
+# 2. hypothesis A vs B - one request settles it
+curl -sS -m 6 -k "https://<ip>/httpapi.asp?command=getStatusEx"
+curl -sS -m 6    "http://<ip>/httpapi.asp?command=getStatusEx"
+
+# 3. the vendor surface Fosi documents
+curl -sS -m 6 "http://<ip>/settings.fcgi"
+
+# 4. UPnP: the description tells you the services, the services tell you the charm
+curl -sS -m 6 "http://<ip>:49152/description.xml"
+```
+
+Then, and only then, open `settings.fcgi` in a browser with devtools on the network tab — the
+page's own XHR calls are the fastest route to whatever endpoints Fosi did not document. A
+port-mirror packet capture is the fallback if the page turns out to talk over something other
+than plain HTTP.
+
+**Do not** exercise the firmware-update control while exploring. It is the one thing on that page
+that can brick the unit.
+
+---
+
+## 6. Rules carried over from the WiiM work
 
 These are hard-won and apply to any LinkPlay-lineage or embedded-Linux streamer, so they govern
 this investigation from the start:
@@ -138,7 +219,7 @@ this investigation from the start:
 
 ---
 
-## 6. Charm prerequisites already in place
+## 7. Charm prerequisites already in place
 
 - `POST /api/proxy` — the hub's LAN proxy (browser→device CORS bypass), private targets only, and
   since the WiiM work it accepts **https** targets with per-request certificate handling. If the S3
@@ -150,11 +231,12 @@ this investigation from the start:
 
 ---
 
-## 7. Status log
+## 8. Status log
 
 | Date | Event |
 | --- | --- |
 | 2026-08-15 | Note opened. Desk research only. Device **not seen on the bench LAN** (ARP sweep shows no new LinkPlay-OUI host beyond the two known WiiM units) — nothing probed yet. |
+| 2026-08-15 | Unit confirmed inbound, not yet on hand. Read-only probe written and **validated against two LinkPlay devices**, producing the §0 baseline. Day-one ladder written. Waiting on hardware. |
 
 ---
 
