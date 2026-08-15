@@ -56,14 +56,14 @@ Project site: **mbxhub.com**
 
 ## Samples & Extensions
 
-Browse working examples in [`samples/`](samples/) — a browser control, a Logitech Media Server plugin, and an MCP server, all built on the public API.
+Working examples live in [`samples/`](samples/). Each one talks to MBXHub over its public REST / WebSocket API and stands on its own — none need the hub's source:
 
-Companion projects here use the **public MBXHub API**. Names follow one of two patterns:
+- **`dynaport/`** — a browser control page (HTML/JS) driving playback over REST.
+- **`lms-dstm/`** — a [Lyrion Music Server](https://lyrion.org/) (formerly Logitech Media Server) plugin that plays MusicBee through MBXHub.
+- **`mcp/`** — a Model Context Protocol server that exposes MBXHub to AI assistants.
+- **`playlist-charm/`** and **`library-tree/`** — prompt recipes: build a playlist charm or a lazy-loading library tree page against the API.
 
-- **`MBXHub.<Role>`** — apps that control a hub over the API (they speak REST/WebSocket, not MusicBee directly).
-- **`MBXHub.<Backend>`** — adapters that connect a music source to the hub (`MBXHub.MusicBee` today; others can follow).
-
-Every sample is **self-contained and offline-first** — no CDNs, no external services — unless the purpose of a specific integration is to provide a bridge to online services.
+Samples are offline-first — no CDNs, no external services — except where an integration exists specifically to bridge to an online service.
 
 ---
 

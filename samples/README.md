@@ -5,7 +5,7 @@ Small, self-contained examples that build on the public MBXHub API. Each folder 
 | Sample | Language | What it shows |
 | --- | --- | --- |
 | [`dynaport/`](dynaport/) | HTML / JS | A browser control that talks to the hub's REST API. |
-| [`lms-dstm/`](lms-dstm/) | Perl | A Logitech Media Server plugin that bridges MusicBee through MBXHub. |
+| [`lms-dstm/`](lms-dstm/) | Perl | A [Lyrion Music Server](https://lyrion.org/) (formerly Logitech Media Server) plugin that plays MusicBee through MBXHub. |
 | [`mcp/`](mcp/) | TypeScript | A Model Context Protocol server exposing MBXHub to AI assistants. |
 | [`playlist-charm/`](playlist-charm/) | Prompt | A prompt recipe for building playlists through the API. |
 | [`library-tree/`](library-tree/) | Prompt | A prompt recipe for a lazy-loading three-level library tree page (charm). |
