@@ -63,7 +63,6 @@ Working examples live in [`samples/`](samples/). Each one talks to MBXHub over i
 - **`mcp/`** — a Model Context Protocol server that exposes MBXHub to AI assistants.
 - **`playlist-charm/`** and **`library-tree/`** — prompt recipes: build a playlist charm or a lazy-loading library tree page against the API.
 
-Samples are offline-first — no CDNs, no external services — except where an integration exists specifically to bridge to an online service.
 
 ---
 
