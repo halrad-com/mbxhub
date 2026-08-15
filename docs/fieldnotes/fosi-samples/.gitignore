@@ -1,0 +1,3 @@
+# Probe output: raw device responses and the generated report. Local evidence,
+# not source - regenerate it by running the script against your own hardware.
+out/

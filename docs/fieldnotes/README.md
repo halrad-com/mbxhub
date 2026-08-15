@@ -15,6 +15,10 @@ because the next person (often us, six months later) shouldn't have to rediscove
 
 Runnable companions live beside the notes — see
 [`wiim-samples/`](wiim-samples/) for the live device watcher used in the
-WiiM notes.
+WiiM notes, and [`fosi-samples/`](fosi-samples/) for `fosi-probe`, a read-only
+first-contact sweep for an unknown network audio device (SSDP census, port plan,
+platform test, vendor web surface, UPnP service list). It is device-agnostic and
+useful on its own; the field note it was written for is still pre-bench and so is
+not listed above.
 
 

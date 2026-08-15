@@ -164,9 +164,14 @@ anything that speaks UPnP MediaRenderer would inherit it.
 
 ## 5. Day one on the bench — the read-only ladder
 
-A scripted read-only sweep exists and has been validated against two LinkPlay devices (it
-produced §0). It runs SSDP discovery, the port plan, the `httpapi.asp` A-vs-B test, the vendor
-web-surface fetch, and the UPnP description parse in one pass, saving every response verbatim.
+A scripted read-only sweep lives beside this note in [`fosi-samples/`](fosi-samples/) and has been
+validated against two LinkPlay devices (it produced §0). It runs SSDP discovery, the port plan, the
+`httpapi.asp` A-vs-B test, the vendor web-surface fetch, and the UPnP description parse in one pass,
+saving every response verbatim:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File fosi-probe.ps1 -Ip <address>
+```
 
 The same ladder by hand, in order, if the script is not available. Every step is a GET; nothing
 below changes device state:
