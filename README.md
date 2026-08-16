@@ -12,8 +12,6 @@ MBXHub is a MusicBee plugin — paired with a lightweight Windows companion — 
 
 This is for MBXHub examples and companion works. Hub releases live at **[mbxhub.com](https://mbxhub.com)**.
 
-- **Samples & extensions** — self-contained companion projects that build on the public MBXHub API (see [below](#samples--extensions)).
-
 ---
 
 ## Highlights
