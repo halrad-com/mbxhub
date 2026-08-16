@@ -34,6 +34,12 @@ inspectable, no account required, does one thing credibly.
 - **SSDP/UPnP eyes** — Windows' own device enumeration (Explorer → Network) plus a
   ten-line M-SEARCH script covers most discovery questions; see the WiiM notes for the
   pattern.
+- **[MBXHVAL](https://github.com/halrad-com/MBXHVAL)** — the validator MBXHub is developed
+  against, cut down to its core and open-sourced. Declarative YAML suites of HTTP requests
+  with field-level assertions and `${var}` substitution, run from one command with a plain
+  pass/fail report. Point it at any REST API on the LAN: once a device or endpoint behaves,
+  a suite freezes that behaviour into something re-runnable instead of a curl you'll never
+  find again.
 
 ## Windows internals
 
