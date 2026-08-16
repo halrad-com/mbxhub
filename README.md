@@ -4,13 +4,13 @@
 
 MBXHub is a MusicBee plugin — paired with a lightweight Windows companion — that exposes your library and playback over a clean local **HTTP + WebSocket API**. Any device on your network can search, browse, control, and stream your music: web browsers, phones, scripts, home-automation, and companion apps all talk to the same hub.
 
-> **Prerelease — v0.5.x.x (release candidate).** MBXHub is under active development. Expect capability and polish; not stability guarantees.
+> **Prerelease — v0.5.x.x (release candidate).** MBXHub is under active development. The standing rule: every build should be better than the last.
 
 ---
 
 ## What this repository is
 
-This is the **public face** of MBXHub — samples and companion works. Hub releases live at **[mbxhub.com](https://mbxhub.com)**.
+This is for MBXHub examples and companion works. Hub releases live at **[mbxhub.com](https://mbxhub.com)**.
 
 - **Samples & extensions** — self-contained companion projects that build on the public MBXHub API (see [below](#samples--extensions)).
 
