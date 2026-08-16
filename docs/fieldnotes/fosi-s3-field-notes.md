@@ -460,6 +460,44 @@ does not advertise which is which.** Generic rendering therefore needs a capabil
 either a per-model allow-list we maintain, or a probe that infers presence from behaviour —
 and that filter, not the rendering, is the real work.
 
+### The whole tree, enumerated **[measured]**
+
+A read-only recursive `getRows` walk from `settings:` and `ui:/settings` (following every
+`container` and every `edit.enumPath`) fetched **100 containers / 868 nodes** in about a
+minute. What the schema actually uses — i.e. the complete component list a generic renderer
+needs:
+
+| Shape | Count | Renders as |
+| --- | ---: | --- |
+| `edit.type: enum_` (+ `enumPath`) | 30 | picker over the enum container's rows |
+| `edit.type: slider` (`min`/`max`/`step`) | 17 | slider |
+| `edit.type: ip` | 8 | IP-address input (network setup) |
+| `edit.password: true` | 3 | masked input |
+| `bool_` values | 64 | toggle |
+| `string_` values | 369 | text input if `modifiable`, else read-only |
+| `i32_` / `i64_` / `double_` without hints | ~90 | numeric input if `modifiable`, else read-only |
+| `type: action` | 11 | button (`activate`) |
+| `containerType: form` (+ `accept`) | 5 | form with submit action |
+| `type: header` / `text` | 27 | labels |
+| named struct types (`audioDevice`, `roonConfig`, `alsaMixerElements`, …) | ~40 kinds | read-only summary |
+
+Only **150 of 659 value nodes are `modifiable`**; the rest are informational. That is roughly
+ten UI components for the entire device — the argument that a schema-driven renderer is
+*cheaper* than a hand-built console, not more expensive.
+
+**`ui:/settings/version/enabled_features`** lists 18 firmware features: AirPlay 2, Bluetooth,
+BLE control, BT/BLE remote controls, DSD, Equalizer, StreamSDK Firmware Update, Google Cast
+(2.0), Hostlink, Master key, PipeWire, Qobuz Connect, Roon, Spotify, Tidal Connect, Webclient,
+UPnP Client, UPnP Renderer. **No display, no microphone/voice** — a coarse but real capability
+signal that confirms the phantom `ui`/mic nodes (below) have no feature behind them.
+
+Bare namespace roots (`player:`, `network:`, `timemanager:`, `pipewire:`, `notifications:`,
+`ui:/airable`) refuse enumeration; their children are reachable by exact path only (e.g.
+`timemanager:/uiAvailableCountries` = 247 rows, `networkwizard:wired`/`wireless` forms).
+Also present and unexplored: `settings:/imx8AudioFramework/dolby` (28 rows — Dolby DRC /
+virtualiser profiles), `settings:/roon` (7), `settings:/googleCastLite` (28),
+`settings:/airplay` (21), `settings:/system` (31).
+
 ### Services present in the settings tree
 
 `airable2`, `airplay`, `appleAuthChip`, `bleControl`, `bluetooth`, `fwupdate`, `googleCastLite`,
