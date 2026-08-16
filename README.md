@@ -33,7 +33,7 @@ This is for MBXHub examples and companion works. Hub releases live at **[mbxhub.
 Once the plugin is installed in MusicBee:
 
 1. **Open the dashboard** — **Tools → MBXHub → Dashboard**. The Now Playing dashboard and built-in pages work right away on this PC; nothing else needed to get going.
-2. **Open network access** so phones and other devices can reach it — **Tools → MBXHub → Settings → Firewall** (Step 4 of the [install guide](https://mbxhub.com/docs.html)). This also confirms the **port** MBXHub is using.
+2. **Open network access** so phones and other devices can reach it — **Tools → MBXHub → Settings → Firewall** (Step 4 of the [install guide](https://mbxhub.com/docs.html#installation)). This also confirms the **port** MBXHub is using.
 3. **Connect other devices** — scan the **QR code** on the dashboard, once the firewall is open.
 
 MBXHub uses **port 8080** by default, falling back to `8081` if that's taken. You can set it to **80** or any other port you like. The current port is shown in **MBXHub Settings** (Tools → MBXHub → Settings, or Preferences → Plugins → Configure).
