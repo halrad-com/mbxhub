@@ -764,7 +764,8 @@ Measured facts above come from the device itself. Background and superseded clai
 - Fosi Audio — [Official statement on the S3 app experience](https://fosiaudio.com/blogs/news/official-statement-on-the-fosi-audio-s3-app-experience) ("app is not LinkPlay-based" — correct, and now explained: the platform is StreamUnlimited)
 - Fosi Audio Community — [S3 Streamer Development Log](https://community.fosiaudio.com/threads/s3-streamer-development-log.5521/) (ten-band EQ "coming soon" — present in this firmware; volume-step complaints — an app limitation, not an API one)
 - TNT-Audio — [Fosi S3 review](https://www.tnt-audio.com/sorgenti/fosi_s3_e.html) — **superseded**: reports the Stream1832AE module as LinkPlay's; the device reports StreamUnlimited
-- StreamUnlimited — [streamunlimited.com](https://www.streamunlimited.com/) (StreamSDK / StreamKit platform vendor)
+- StreamUnlimited — [streamunlimited.com](https://www.streamunlimited.com/) (StreamSDK / StreamKit platform vendor; no public API docs — partner-only)
+- **Prior art on the same API:** [aioharmanluxury](https://github.com/sbesh91/aioharmanluxury) (MIT) — the client behind Home Assistant's [Harman Luxury Audio](https://www.home-assistant.io/integrations/harman_luxury) integration (Arcam Radia ST5/ST60, JBL, Mark Levinson — StreamSDK devices). Independently confirms the transport verb shape (`activate player:player/control {"control":…}`), volume/mute paths, and adds: `powermanager:target` **rejects writes** (power is read-only), identity at `settings:/system/serialNumber|modelName|primaryMacAddress`; Harman units are HTTPS/self-signed with volume max 99 where the S3 is plain HTTP / 100.
 - Rygel / GUPnP — the UPnP MediaRenderer implementation this firmware uses
 - Bluetooth SIG — Auracast / LE Audio Broadcast Audio Profile (BAP)
 - [wiim-http-api-reference.md](wiim-http-api-reference.md) — the LinkPlay contrast case; **does not apply to this device**
