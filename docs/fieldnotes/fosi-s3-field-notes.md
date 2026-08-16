@@ -1,258 +1,690 @@
 # Fosi Audio S3 — field notes
 
-> **STATUS: PRE-BENCH (opened 2026-08-15). Nothing about the S3 itself is measured yet.**
-> The one measured section is §0, and it is measured on *other* hardware — the LinkPlay
-> devices we already own, used as a yardstick to hold the S3 against when it arrives.
-> Every other note in this directory states bench-verified truth. This one does not, yet —
-> it is the desk-research file opened *before* the unit reaches the bench, so the probing
-> is planned rather than improvised. Each claim below carries its provenance:
-> **[vendor]** = published by Fosi, **[press]** = reviewer/press reporting,
-> **[inferred]** = our reasoning from platform knowledge, **[hypothesis]** = to be tested,
-> **[measured]** = verified here on the bench (none yet).
-> This note is deliberately **not** listed in the [field notes index](README.md) until the
-> first measurement lands.
+> **STATUS: BENCH-VERIFIED (2026-08-16).** The unit is on the bench and everything below
+> marked **[measured]** was read from it directly, read-only, over HTTP. Claims still
+> carrying **[vendor]** / **[press]** / **[inferred]** provenance are flagged inline.
+>
+> **This note corrects its own pre-bench version.** The desk research said "LinkPlay
+> hardware with a Fosi app layer on top". That was wrong, and it was wrong in the most
+> useful possible way — see §0.
 
 **Device:** Fosi Audio S3 — Balanced HiFi Streamer / DAC / Preamp.
-AK4493SEQ DAC, Wi-Fi 6, Bluetooth 5.3, XLR balanced + RCA + optical + sub out + HDMI eARC,
-AirPlay 2 / Google Cast / DLNA / Spotify Connect / TIDAL Connect.
+AK4493SEQ DAC, Wi-Fi 6, Bluetooth 5.3, XLR balanced + RCA + optical + sub out + HDMI eARC.
 
 **Why we care:** it is a candidate for an MBXHub *charm* — a local-network control page served
-by the hub, driving the device directly over its own interfaces with no vendor cloud and no
-vendor app. The WiiM notes in this directory are the template for what "owned" looks like.
+by the hub, driving the device over its own interfaces with no vendor cloud and no vendor app.
+The WiiM notes in this directory are the template for what "owned" looks like.
+
+**Verdict up front: this device is a dramatically better charm target than the WiiM.**
+It ships a complete, unauthenticated, self-describing control API — and it tells you its own
+schema. Nothing had to be reverse-engineered.
 
 ---
 
-## 0. The yardstick — what a LinkPlay device looks like from outside **[measured]**
+## 0. The headline correction — it was never a LinkPlay box **[measured]**
 
-Before the S3 arrived, the read-only probe was written and run against two known LinkPlay
-devices (a WiiM Ultra and a WiiM Sound Lite) to validate the tooling and, more usefully, to
-establish what "this is a stock LinkPlay box" looks like from the network. Measured
-2026-08-15, both devices identical in profile:
+The pre-bench note built its whole decision tree on a press teardown reporting an
+"Amlogic A113X in a **LinkPlay** Stream1832AE module", and asked whether Fosi had replaced
+the app layer on top of LinkPlay firmware. The measured answer is that the premise was wrong:
 
-| Probe | Result on stock LinkPlay firmware |
+| Evidence | Value |
 | --- | --- |
-| TCP **80** | **closed** |
-| TCP 443, 8443 | open (HTTPS, self-signed) |
-| TCP 8819 | open — LinkPlay's private/app port |
-| TCP 49152 | open — UPnP device description |
-| TCP 8008 / 8009 | open — Google Cast |
-| TCP 22, 23, 5000, 8080, 8888, 1400, 7000 | closed |
-| `http://<ip>/httpapi.asp?command=getStatusEx` | **no answer** (connection refused — there is no :80) |
-| `https://<ip>/httpapi.asp?command=getStatusEx` | **HTTP 200**, full status JSON |
-| UPnP description | `http://<ip>:49152/description.xml` |
-| UPnP services | `AVTransport:1`, `ConnectionManager:1`, `RenderingControl:1`, plus vendor `urn:schemas-wiimu-com:service:PlayQueue:1` and `urn:schemas-tencent-com:service:QPlay:1` |
-| `manufacturer` in the description XML | `Linkplay Technology Inc.` |
+| UPnP description `modelURL` | `http://www.streamunlimited.com/` |
+| UPnP description `manufacturer` | `Fosi Audio` (**not** `Linkplay Technology Inc.`) |
+| Vendor debug page logo asset | `/style/images/streamunlimited_logo.png` |
+| Platform-variant keys in the settings tree | `…micMuteHwSwitchType_streamkit1832`, `_streamkit1955`, `_streamkit3d` |
+| UPnP stack | `LibRygelRenderer` — Rygel/GUPnP, i.e. a GNOME-stack Linux userland |
+| `Server:` header on SSDP | `Linux/6.6.71 UPnP/1.0 GUPnP/1.6.6` |
+| Device API namespace | `NSDK` — **StreamSDK** by name in its own error text |
+| Web client → Settings → *Firmware Version & Update* → *Current Firmware Version* | a row literally labelled **StreamSDK** `1.0.262.0x8c8c164`; kernel toolchain `aarch64-sue-linux-gcc` (**S**tream**U**nlimited **E**ngineering) |
 
-**This gives us a one-glance discriminator for the S3.** Fosi's own documentation puts
-`settings.fcgi` on **plain HTTP at the device IP** — and stock LinkPlay firmware does not serve
-port 80 at all. So:
+The vendor's own firmware page settles it outright. Full version block as displayed
+**[measured, from the UI]**:
 
-- **Port 80 open, 8819 closed, `manufacturer` not Linkplay** → hypothesis **B**: Fosi replaced the
-  application layer. The WiiM reference does not transfer; the charm is built on UPnP + whatever
-  `settings.fcgi` exposes.
-- **8819 open and `httpapi.asp` answering over HTTPS** → hypothesis **A**: it is a LinkPlay box
-  wearing a Fosi app, and most of [wiim-http-api-reference.md](wiim-http-api-reference.md) applies.
-- **Both** (80 open *and* 8819 open) → the most interesting outcome: a Fosi layer added *over* a
-  live LinkPlay stack, meaning two independent control surfaces, one of them undocumented.
-
-Note also what the baseline says about the plane ranking below: **every** LinkPlay device already
-exposes `AVTransport` + `RenderingControl` on :49152. If the S3 does the same — and vendor-confirmed
-DLNA says it should — then a UPnP-based charm works regardless of which hypothesis wins. That is the
-argument for building the renderer charm first and treating any vendor API as an enhancement.
-
----
-
-## 1. The platform (this is the whole story)
-
-| Fact | Provenance |
+| Row | Value |
 | --- | --- |
-| SoC is an **Amlogic A113X**, integrated in the **LinkPlay Stream1832AE** module | [press] TNT-Audio teardown/review |
-| DAC AK4493SEQ, op-amps OPA1612, ADC Burr-Brown PCM1894 | [press] |
-| Streaming stack: AirPlay 2, Google Cast, DLNA, Spotify Connect, TIDAL Connect; Qobuz Connect in progress; **Roon Ready not yet certified** ("connect via AirPlay 2 or Google Cast") | [vendor] product page |
-| Network: 802.11 a/b/g/n/ac/**ax** dual-band + **10/100M Ethernet**; BT 5.3 with A2DP/AVRCP/BTLE, SBC + AAC only | [vendor] |
-| Sample-rate ceiling differs by transport: **768 kHz over Ethernet, 384 kHz over Wi-Fi** | [vendor] |
-| **The Fosi Audio app is *not* based on LinkPlay** — Fosi says so explicitly | [vendor] app statement |
+| Release | `0.0.262.0x8c8c164` |
+| StreamSDK | `1.0.262.0x8c8c164` |
+| Host | `FOSI-S3_0.57` |
+| BSP | `25.03-Nickel-5-g2ed17870a` |
+| Build info | `Built by auto_build_backend.sh 262 on 2026-06-02 10:34:32+00:00 at <buildhost>` |
+| Kernel | `Linux 6.6.71 (aarch64-sue-linux-gcc GCC 13.3.0) #1 SMP PREEMPT Mon Jun 1 2026` |
+| Machine name | `fosis3` |
+| Enabled features | *(sub-page, not yet opened)* |
 
-**The central tension, and the thing the whole investigation turns on:**
-the *hardware* is a LinkPlay module — the same family that gives WiiM, Arylic and a hundred
-white-label brands the `httpapi.asp` command surface we already documented in
-[wiim-http-api-reference.md](wiim-http-api-reference.md). But the *app* is Fosi's own, not the
-LinkPlay app. Two possibilities, and they lead to completely different charms:
+Read those as three layers: **StreamSDK** is the platform (build 262, and `settings:/version`
+matches it), **Host** `FOSI-S3_0.57` is Fosi's product layer on top, **BSP** `25.03-Nickel` is
+the board support package underneath. Firmware is ten weeks old at time of bench.
 
-- **[hypothesis A] Fosi built their app on top of a stock-ish LinkPlay firmware.**
-  Then `http(s)://<device-ip>/httpapi.asp?command=getStatusEx` answers, and our entire WiiM
-  reference is ~80% reusable on day one. Cheapest possible charm.
-- **[hypothesis B] Fosi replaced the application layer on the module (own Linux userland on
-  the A113X), keeping only the SoC/radio.** Then `httpapi.asp` is gone and control has to come
-  from the standard planes (UPnP/DLNA, Google Cast) plus whatever their own web surface exposes.
+The module is **StreamUnlimited StreamKit 1832** — StreamUnlimited being the Austrian OEM
+streaming-platform vendor (the "Stream1832" name is theirs, not LinkPlay's). The press
+attribution of that module to LinkPlay was a misattribution that the desk research inherited.
 
-There is one hard piece of evidence already pointing at **B**, below.
+**Why this is good news, not merely a correction.** StreamSDK is the platform behind a large
+number of mainstream hi-fi streamers. Everything documented below is the *StreamSDK* control
+surface, not a Fosi quirk — so the charm built against it is a **StreamSDK charm** that should
+carry to any device on this platform, exactly as the UPnP renderer charm carries to any
+renderer. That is a much larger prize than one vendor skin.
 
----
-
-## 2. Known local HTTP surface — `settings.fcgi`
-
-**[vendor]** Fosi's own firmware-update instructions tell the user to:
-
-1. open the Fosi Audio app → *My Device* → note the device's IP address;
-2. in a browser on the same network, go to `http://<device-ip>/settings.fcgi`;
-3. in the resulting **debugging interface**, use the *Firmware Update* → *File* control to
-   upload the region-appropriate `image.XXX.swu` file.
-
-Three deductions worth writing down:
-
-- **[inferred] There is a real HTTP server on port 80 with FastCGI handlers.** `.fcgi` is not a
-  LinkPlay convention — WiiM/LinkPlay devices answer on `httpapi.asp` and (on newer firmware)
-  are HTTPS-only. A `settings.fcgi` served over plain HTTP is a *different* web stack. This is
-  the strongest single argument for hypothesis B.
-- **[inferred] `.swu` means SWUpdate**, the standard embedded-Linux OTA framework. SWUpdate ships
-  its own web front-end and a documented upload endpoint. If Fosi is using it more or less stock,
-  the update surface has known shapes to look for (and, notably, SWUpdate's own server commonly
-  sits on **:8080** — worth probing separately from :80).
-- **[inferred] "Debugging interface" is Fosi's own word for it.** Pages that call themselves
-  debug interfaces usually have neighbours. Enumerating what else that server routes is the single
-  highest-value hour of bench time on this device.
-
-**[hypothesis]** A sibling product (Fosi DS3) is documented with a "Firmware Update & Control
-Interface" walkthrough — if the DS3 shares the web stack, its interface is a preview of the S3's.
+**The lesson for the method:** the pre-bench A/B discriminator (§4) *worked* — port 80 open
+with 8819 closed correctly predicted "not LinkPlay firmware" on the first request. The
+discriminator was sound; the *explanation* attached to it was not. A test can point the right
+way for the wrong reason, and only the follow-up read tells you which.
 
 ---
 
-## 3. Control planes, ranked by how much of the charm they can carry
+## 1. Identity **[measured]**
 
-| Plane | Why it might work | Confidence | First probe |
+| Field | Value |
+| --- | --- |
+| Friendly name | `Fosi S3` |
+| Manufacturer / model | `Fosi Audio` / `S3` |
+| Serial | `S3304CAGA0000` (shape shown; per-unit value altered) |
+| UDN | `uuid:1b2c3d4e-5f60-4718-9a0b-c1d2e3f40516` (shape shown; per-unit value altered — stable across reboots, **regenerated by factory reset**) |
+| `settings:/version` | `1.0.262.0x8c8c164` |
+| `settings:/releasetext` | `0.0.262.0x8c8c164` |
+| Kernel | Linux 6.6.71 |
+| UPnP device type | `urn:schemas-upnp-org:device:MediaRenderer:2`, DLNA `DMR-1.51` |
+| System member id (internal) | `fosis3-1b2c3d4e-…` (per-unit; regenerated by factory reset) |
+
+### Open ports
+
+| Port | State | What it is |
+| --- | --- | --- |
+| **80** | open | the whole control surface — web client, `/api`, `settings.fcgi` |
+| 443, 8443 | open | HTTPS forms of the same |
+| **8008 / 8009** | open | Google Cast |
+| **7000** | open | AirPlay 2 |
+| 16500 | open | UPnP device description (`/[uuid].xml`) |
+| 8819 | **closed** | LinkPlay's private port — absent, as expected |
+| 22, 23, 5000, 8080, 8888, 1400, 49152-49155 | closed | — |
+
+`http(s)://<ip>/httpapi.asp?command=getStatusEx` → **HTTP 404** on both schemes. No LinkPlay
+command surface exists on this device; [wiim-http-api-reference.md](wiim-http-api-reference.md)
+does not apply to it at all.
+
+---
+
+## 2. The NSDK / StreamSDK API — the whole contract **[measured]**
+
+The device **serves its own API client library** at `/jsapi/nsdk-api.js`. That file is the
+authoritative contract; it did not have to be inferred from traffic. Five endpoints, all on
+plain HTTP port 80:
+
+| Endpoint | Method | Purpose |
+| --- | --- | --- |
+| `/api/getData?path=<path>&roles=<roles>` | GET | read one node |
+| `/api/setData` | POST JSON | write one node |
+| `/api/getRows?path=<path>&roles=@all&from=<n>&to=<n>` | GET | enumerate a container |
+| `/api/event/modifyQueue` | POST JSON | subscribe/unsubscribe to change events |
+| `/api/event/pollQueue?queueId=<id>&timeout=<ms>` | GET | long-poll the event queue |
+
+### Authentication: off by default, but available in three modes
+
+`settings:/webserver/authMode` → `none` on this unit as shipped, and every read below was
+performed with no credential of any kind. **[measured]** But the node is `modifiable` and its
+enum `settings:/webserver/authModes` offers three settings:
+
+| Value | Title | Meaning |
+| --- | --- | --- |
+| `none` | *Not required* | anything on the LAN reads and writes everything (**shipping default**) |
+| `setData` | *Configuration changes* | reads stay open, **writes require credentials** |
+| `all` | *Everything* | reads and writes both gated |
+
+The web client exposes it as *Settings → Device Settings → Change Device Password*
+(old / new / retype), and its string table carries the intent verbatim: *"Setup your login —
+Credentials will be required to change device settings later."* The password node itself was
+not located this session (the strings mention a `username` too, so it is likely a
+username+password pair, HTTP-auth style — **[inferred]**, unverified).
+
+Both `settings:/webserver/port` (80) and `httpsPort` (443) are marked *"generated based on
+machines.py — do not edit"*; HTTPS uses a Fosi-issued self-signed cert (`O=FosiAudio, CN=S3`,
+valid 2025-06 → 2045-06, `httpsUseDeviceCert: true`).
+
+**`setData` mode is the shape a charm wants.** Monitoring, now-playing and the event queue stay
+credential-free; only writes carry auth. If the operator sets a password, the charm needs a
+stored credential for writes and nothing else changes. See §6.
+
+### Value envelope
+
+Values are typed objects, not bare scalars. Reads return them; writes must supply them:
+
+```json
+{"type":"i32_","i32_":100}
+{"type":"bool_","bool_":false}
+{"type":"double_","double_":-3.5}
+{"type":"string_","string_":"Fosi S3"}
+```
+
+Types seen: `string_`, `i16_`, `i32_`, `i64_`, `bool_`, `double_`, `doubleList`, `stringList`,
+plus named struct types (`playLogicData`, `alsaMixerElements`, `aqmConfig`, `variant`, …).
+
+`setData` body is `{"path":…,"role":…,"value":…}` where `role` is `"value"` for a normal write
+or `"activate"` (with `value: {}`) to fire an action node — that is how transport commands are
+invoked.
+
+### Error shape
+
+Errors come back as HTTP 500 with a JSON body — a genuinely useful one:
+
+```json
+{"error":{"name":"CMAbstractWorker::invalidPath","title":"Error",
+          "message":"Node at path 'ui:/' does not exist"}}
+```
+
+**This is the single biggest difference from the LinkPlay work.** A wrong path *fails loudly*
+and says why. On the WiiM, a wrong or invented command returned `OK` — three false OKs were
+measured in one day, and read-back was the only defence. Here the device distinguishes
+"I did that" from "that is not a thing". Read-back after write is still the house rule, but the
+protocol is no longer actively lying to us.
+
+### The tree describes itself
+
+`getRows` with `roles=@all` returns, per node: `path`, `type` (`value` / `container`), current
+`value`, `defaultValue`, `title` (human label), `modifiable` flag, `valueUnit`, and an `edit`
+hint — `{"type":"slider","min":"-10","max":"10","step":"0.5"}` or
+`{"type":"enum_","enumPath":"settings:/mediaPlayer/playModes"}` pointing at the node that
+enumerates the legal values.
+
+**A charm can render this device's controls generically, with nothing hardcoded** — walk the
+tree, draw a slider where the device says slider, populate a dropdown from the `enumPath`, and
+grey out anything without `modifiable: true`. **The vendor's own web client already works
+this way** **[measured]**: `getRows ui:/settings` returns the seven Settings-tab entries
+verbatim (*Audio Processing, Bluetooth, Network Setup, Network Info, Firmware Version &
+Update, Services Settings, Device Settings*), each a `ui:` container that in turn lists the
+`settings:` value nodes that page shows; forms are `containerType: "form"` with an `accept`
+action. None of those page strings exist in the JS bundle. The client is a tree renderer, and
+the whole vendor menu is `ui:/` — so a charm that renders `ui:/` gets Fosi's menu for free
+and can then go past it into `settings:` for everything the vendor left out. That is a fundamentally different (and far more
+durable) charm than a hand-written skin over a guessed command list.
+
+---
+
+## 3. What the tree holds **[measured]**
+
+### Namespace roots
+
+`settings:` (root is titled *"Settings (debug)"*, 47 top-level entries), `player:`,
+`network:`, `timemanager:`, `notifications:`, `googlecastlite:`, `pipewire:`, and `ui:`
+(a presentation/browse namespace — `ui:/settings`, `ui:/settings/audio/eq`, `ui:/airable`).
+Bare roots (`player:`, `ui:/`, `media:`) are **not** enumerable; you must address a real child.
+
+### Player / transport
+
+| Path | Notes |
+| --- | --- |
+| `player:player/data/value` | full now-playing struct (below) |
+| `player:player/control` | transport — action node, driven via `activate` |
+| `player:player/data/playMode` | play mode |
+| `player:player/data/playTime` | position |
+| `player:volume` | `i32_`, **0-100, 1-step** — read `100` live |
+| `player:player/control/like` / `/dislike` | service thumbs |
+| `settings:/mediaPlayer/mute` | `bool_` |
+
+Live now-playing while the unit played optical in, trimmed:
+
+```json
+{"type":"playLogicData","playLogicData":{
+  "state":"playing",
+  "controls":{"pause":true},
+  "mediaRoles":{"type":"audio","audioType":"audioBroadcast","title":"SPDIFIN",
+    "mediaData":{"resources":[{
+      "uri":"alsa://spdifin_plug?rate=48000?channels=2?format=S16LE…",
+      "nrAudioChannels":2,"sampleFrequency":48000,"bitsPerSample":16,
+      "mimeType":"audio/unknown"}],
+      "metaData":{"live":true,"serviceName":"S/PDIF","serviceIcon":"skin:iconOptics",
+                  "serviceID":"SPDIFIN","playLogicPath":"pipewire:playLogic"}}}}}
+```
+
+Note what that gives us for free: **the actual incoming sample rate and bit depth of the
+optical input** (48 kHz / 16-bit S16LE), the source identity, a `live` flag, and a `controls`
+map telling the client *which transport buttons are currently legal*. The WiiM never exposed
+input-signal format at all. Audio path is **PipeWire**.
+
+**A network source fills the whole card.** Operator chose *Fosi S3 — Qobuz Connect* as the
+output in the Qobuz desktop app; the S3 switched to it on its own (no selection needed —
+receivers take the source when a sender pushes; `lastAudioSource` went to `0`, it does not
+track network sources). Same node, trimmed **[measured]**:
+
+```json
+{"state":"paused",
+ "trackRoles":{"title":"One of These Days",
+   "mediaData":{"metaData":{"artist":"Pink Floyd","album":"8-Tracks",
+       "serviceID":"qobuzconnect","serviceName":"Qobuz Connect",
+       "playLogicPath":"qobuzconnect:/playlogic"},
+     "activeResource":{"codec":"Free Lossless Audio Codec (FLAC)",
+       "bitsPerSample":24,"sampleFrequency":192000,"bitRate":9216000,
+       "nrAudioChannels":2,"duration":338218,"quality":{"qobuzHiRes":true}}},
+   "icon":"https://static.qobuz.com/images/covers/…_600.jpg"},
+ "controls":{"previous":true,"next_":true,"pause":true,"seekTime":true,
+   "playMode":{"shuffle":true,"repeatOne":true,"repeatAll":true,
+               "shuffleRepeatOne":true,"shuffleRepeatAll":true}},
+ "status":{"duration":338218}}
+```
+
+Title / artist / album / cover-art URL / codec / **true stream format (24-bit / 192 kHz FLAC,
+9,216 kbps)** / duration, plus a per-source `controls` map declaring prev/next/pause/seek and
+which play modes are legal. That is a complete now-playing card and transport bar from one
+read, with the button set driven by the source rather than hardcoded. (Note `next_` with a
+trailing underscore — reserved-word escaping in the schema, same family as `i32_`.) The
+physical-input reads earlier show the other end of the same struct: `audioBroadcast`, `live`,
+no title, `controls: {pause}` only.
+
+The vendor web client's player bar rendered exactly this read — cover, artist / album / title,
+"Free Lossless Audio Codec (FLAC) · 9216 kbps · 24 bit · 192 kHz · 2 ch", Hi-Res badge,
+prev / play / next, seek bar, volume — confirming the struct is the whole source of that card
+(the client's format line overflows its box, a layout bug in the skin, not the data). The Qobuz
+Connect service page in the client shows *Resume Playback*, *Log Out*, and library version
+`1.0.1-b721`.
+
+### Equalizer — 10 bands, self-describing
+
+`getRows` on `ui:/settings/audio/eq` returns `settings:/mediaPlayer/equalizerOnOff` plus ten
+band nodes `ui:/settings/audio/eq/0…9`, each a `double_` with its own title and slider spec:
+
+| Node | Title | Range |
+| --- | --- | --- |
+| `…/eq/0` … `…/eq/9` | `31.5 Hz`, `63.0 Hz`, `125.0 Hz`, `250.0 Hz`, `500.0 Hz`, `1000.0 Hz`, `2000.0 Hz`, `4000.0 Hz`, `8000.0 Hz`, `16000.0 Hz` | −10 … +10 **dB**, step 0.5 |
+
+This settles open question #7 from the pre-bench agenda: the shipping firmware has the
+**ten**-band EQ, it is reachable locally, and it is in real dB — unlike the WiiM's opaque
+0-100 scale with 50 as flat, which had to be discovered by trial.
+
+**Presets are app-side, not device-side.** The curve read on first contact
+(2, 3, −1, −0.5, 0, 2, 1.5, 2, 1.5, 1) turned out to be the Android app's **"Popular"** preset
+**[measured — operator matched it in the app's preset list]**. The device tree exposes no preset
+node — just the ten raw bands — and the web client renders only raw sliders. So the app keeps a
+preset table and writes ten values; the device only ever holds the current curve. **All nine app presets, captured** **[measured]** — operator tapped each in the Android app,
+`getRows ui:/settings/audio/eq` read after every tap (dB, bands 31.5 Hz → 16 kHz):
+
+| Preset | 31.5 | 63 | 125 | 250 | 500 | 1k | 2k | 4k | 8k | 16k |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Popular | 2 | 3 | −1 | −0.5 | 0 | 2 | 1.5 | 2 | 1.5 | 1 |
+| Dance | 4 | 5 | −2 | −1.5 | −1 | 1 | 1.5 | 2.5 | 3 | 2 |
+| Jazz | 0.5 | 1.5 | 1 | 0 | 0 | −0.5 | −1 | 1 | 1.5 | 1 |
+| Rock | 1 | 3 | 0 | 1 | 1.5 | 2 | 1.5 | 1 | 1 | 0 |
+| Classic | −1 | 0 | 0 | 0 | 0 | 0.5 | 1.5 | 2 | 3 | 4.5 |
+| Human Voice | −3 | −1.5 | 1 | 2.5 | 2 | 3 | 2.5 | 1 | −1 | −2.5 |
+| Electronic | 6.5 | 5 | 2 | 0 | −2 | 0 | 2 | 4 | 5.5 | 6.5 |
+| Metal | 4.5 | 5.5 | 2.5 | −2 | −4.5 | −3.5 | 2 | 5 | 4 | 1.5 |
+| Original Sound Track | 5.5 | 4 | 1.5 | 0 | 0 | 1 | 2 | 3.5 | 4.5 | 5 |
+
+Re-selecting *Popular* reproduced the first-contact values exactly — the app writes
+deterministic curves. `rowsVersion` advanced by 8–10 per preset (one write per changed band),
+so the app sends individual `setData` calls per band, not a bulk write. The app's EQ on/off
+toggle is `settings:/mediaPlayer/equalizerOnOff` (`bool_`, read `true` throughout).
+Consequence for a charm: presets are ours to carry — the table above *is* the charm's preset
+table — and there is nothing on the device to keep in sync with. Contrast the WiiM, whose 24 presets live
+in firmware (`EQGetList` / `EQLoad`).
+
+Tone controls sit separately under `settings:/mediaPlayer`: `bass`, `treble`, `balance`
+(all `double_`, −10…+10 dB, 0.5 step), `loudness`, `attenuation` (−120…0 dB),
+`equalizerOnOff`, `postprocessing`, `maxVolume`, `powerOnVolume` / `powerOnVolumeMode`.
+
+### Bluetooth — it transmits, and it does LE Audio **[measured]**
+
+| Path | Value | Meaning |
+| --- | --- | --- |
+| `settings:/mediaPlayer/a2dpOutputMode` | `false` | classic A2DP **source** mode — S3 transmits to a BT speaker/headphone |
+| `settings:/bluetooth/a2dpOutputAllowedServices` | 18 names | which sources may be re-transmitted over A2DP (`UPnP`, `QPlay`, `AUX`, `tidal`, `qobuz`, `spotify`, …) |
+| `settings:/bluetooth/bapBroadcastOutputEnabled` | `false` | **Auracast** — LE Audio broadcast out |
+| `settings:/bluetooth/bapUnicastOutputEnabled` | `false` | LE Audio unicast out |
+| `settings:/bluetooth/preferA2dpOverBap` | `false` | with a dual-mode device, prefer classic over LE Audio |
+| `settings:/bluetooth/maxPairedAudioDevices` | `8` | — |
+| `settings:/bluetooth/a2dpDelay` | `350000` µs | fixed A2DP latency offset |
+| `settings:/bluetooth/autoConnectMode` | `false` | reconnect last A2DP source at boot |
+
+**Comparison to the WiiM, since it comes up.** The WiiM Ultra *does* transmit Bluetooth — that
+was measured here on 2026-08-10 (`getbthistory` showed a paired `Audio Sink`, and
+`startbtdiscovery` found a TV sink). But it is exactly the narrow feature the operator
+remembers: *pair the box to one BT speaker*. The S3 has that same A2DP-source capability
+**plus** the LE Audio pair above, and `bapBroadcastOutputEnabled` is a different class of
+thing entirely — see below.
+
+**What Auracast is.** Auracast is Bluetooth SIG's branding for **LE Audio broadcast**
+(the BAP Broadcast Source role). Instead of pairing one-to-one, the transmitter sprays an
+*unpaired, unlimited-listener* audio stream that any nearby LE Audio receiver can simply tune
+into, like a radio station — no pairing handshake, no device limit. It is the mechanism behind
+"silent disco" headphone modes, gym-TV audio, and airport-gate assistive listening. It rides
+LE Audio's LC3 codec, so it is lower-power and generally better-sounding than SBC A2DP at the
+same bitrate. Practically, for this bench: the S3 could broadcast whatever it is playing to
+any number of LE Audio headphones at once, which classic A2DP cannot do at all.
+**[measured]** that the capability is present and currently `false`; **[untested]** whether it
+actually works and what it sounds like — that needs an LE Audio receiver on the bench.
+
+### Fosi's own nodes — `settings:/custom` **[measured]**
+
+This is the one genuinely vendor-specific corner of an otherwise stock StreamSDK tree, and it
+is where the two controls the web client shows on its Home screen actually live:
+
+| Path | Type | Value | Notes |
 | --- | --- | --- | --- |
-| **UPnP / DLNA (AVTransport + RenderingControl)** | Vendor-confirmed DLNA support means the device is a **UPnP MediaRenderer** — a standards-defined, vendor-independent control surface: play/pause/stop/seek, SetAVTransportURI, volume, mute. We already own the discovery half (`SsdpCore`, and the hub's endpoint scan) | **high** — this is the plane most likely to carry a working charm on day one | SSDP `M-SEARCH` for `urn:schemas-upnp-org:device:MediaRenderer:1`, then fetch the `LOCATION` description XML and read the service list |
-| **`settings.fcgi` / vendor web surface** | Vendor-documented to exist; local; no cloud | **high that it exists**, unknown what it exposes beyond firmware | `GET http://<ip>/settings.fcgi`, read the page, watch its own XHR traffic |
-| **LinkPlay `httpapi.asp`** | The module lineage. Costs one request to test | **low-to-moderate** (the `.fcgi` evidence argues against) | `GET http(s)://<ip>/httpapi.asp?command=getStatusEx` |
-| **Google Cast** | Vendor-confirmed; the workspace already has a casting lane (MBXCast) | moderate — good for *sending* audio, weaker for device control | mDNS `_googlecast._tcp` |
-| **AirPlay 2** | Vendor-confirmed | low for our purposes — sender-side, not a control API we want to reimplement | mDNS `_airplay._tcp` / `_raop._tcp` |
-| **Spotify / TIDAL / Qobuz Connect** | — | **out of scope** — cloud-mediated, and the charm is offline-first by rule | — |
-| **Bluetooth AVRCP** | The S3 is a BT *sink*; AVRCP gives transport control from the source side | situational | pair and test transport keys |
+| `settings:/custom/audioOutputMode` | `bool_` | `true` | **Audio Output Mode** — the RCA/XLR-vs-Optical selector |
+| `settings:/custom/lastAudioSource` | `i32_` | `4` | title reads *"Salst Audio Source"* (vendor typo for *Last*) |
+| `settings:/custom/productModel_fosis3` | `fosiProductModel` | `s3` | this unit |
+| `settings:/custom/productModel_fosis3lite` | `fosiProductModel` | `s3lite` | — |
+| `settings:/custom/productModel_fosis5` | `fosiProductModel` | `s5` | — |
 
-**[inferred] The charm shape this implies.** If UPnP holds, the S3 charm looks less like the WiiM
-charm (a thin skin over one rich vendor API) and more like a *renderer* charm: standards-based
-transport + volume, plus whatever device-specific extras `settings.fcgi` turns out to expose
-(input select, output mode, EQ). That is a different — and more reusable — piece of software:
-anything that speaks UPnP MediaRenderer would inherit it.
+**Audio Output Mode is a boolean, and that matches the hardware.** The web client offers
+exactly two choices — *RCA/XLR Out* and *Optical Out* — so a `bool_` is the whole control, not
+a truncated enum. With *Optical Out* selected in the UI and the node reading `true`
+(`defaultValue: false`), the mapping is almost certainly **`true` = Optical Out,
+`false` = RCA/XLR Out** — **[inferred]** from that correlation, and the one place a
+snapshot → write → read-back → restore test is clearly worth doing.
+
+**`lastAudioSource` enum, mapped** **[measured]** — operator selected each source in the
+Android app, node + now-playing read after each:
+
+| Value | Source | Now-playing `serviceID` | ALSA capture URI |
+| ---: | --- | --- | --- |
+| 0 | *(default / none)* | — | — |
+| 1 | Bluetooth | *(empty, `state: stopped`)* — armed, nothing paired | — |
+| 2 | Line In | `AUX` | `alsa://aux_plug` 48k / 16-bit |
+| 3 | HDMI In | `HDMI` | `alsa://spdifin_plug` 48k / 16-bit |
+| 4 | Optical In | `SPDIFIN` | `alsa://spdifin_plug` 48k / 16-bit |
+
+Two things this shows beyond the enum. **HDMI (eARC) and Optical share the same capture
+device** (`spdifin_plug`, `SPDIFIN Sample Rate` element) — the eARC audio is muxed onto the
+S/PDIF receiver; only the service label differs. And **physical inputs go active on selection**
+(`AUX`/`HDMI` appear as live `audioBroadcast` sources instantly), whereas Bluetooth selection
+only arms the sink — the player stays `stopped` with an empty service until a phone actually
+streams. The network sources (Cast, AirPlay, UPnP) and the music services could not be
+"selected" from the app at all — it demanded the corresponding sender/app first — which is
+consistent with them being *receivers* that become the source when something pushes to them,
+not inputs one picks. Whether writing `lastAudioSource` *drives* the switch (vs. merely
+recording it) is **untested** — the app may activate a separate node and this one just follows;
+resolving that is one write in the sweep, snapshot-and-restore.
+
+**The firmware carries product models for an `s3lite` and an `s5`** alongside the `s3`. Those
+are not products Fosi has shipped as of this writing — a shared-firmware family, which is
+consistent with a platform vendor's SDK and mildly interesting for where the line is going.
+Recording it as observed fact; drawing no roadmap conclusions from it.
+
+**A parser trap, measured in the reply above:** the `lastAudioSource` node returns
+`"defaultValue":{"type":"i32_","i32__":0}` — note the **double underscore**, which does not
+match its own `type` field. Any client that reads `value[value.type]` gets `undefined` there.
+The device's schema is self-describing but not flawless; the charm must tolerate a key that
+does not match its declared type rather than assuming the contract holds.
+
+### Audio inputs, as the platform sees them **[measured]**
+
+`settings:/mediaPlayer/alsaDevices` inventories the capture side:
+
+| Node | Device | Format |
+| --- | --- | --- |
+| `spdifIn` | `spdifin_plug` | 16-bit / 48 kHz, drift compensation on, live rate read from ALSA element `SPDIFIN Sample Rate` on `hw:0` |
+| `lineIn` | `aux_plug` | 16-bit / 48 kHz |
+| `hdmiIn` | *(unnamed)* | 16-bit / 48 kHz |
+| `micIn` | `mics_plug` | — |
+| `defaultOut` | `pipewire` | — |
+| `notificationOut` | `notify` | — |
+
+The `sampleRateSource` block is why the now-playing struct can report the *actual* incoming
+optical rate rather than a nominal one — the platform reads it from a live ALSA mixer element.
+Nodes suffixed `_stream210streamer` are alternate hardware-variant definitions carried in the
+same firmware (32-bit / 96 kHz line in, `hw:Amebasnd` S/PDIF), further confirming this is a
+multi-product platform image.
+
+### Multiroom, and what refuses to join it
+
+`settings:/multiroom` and `settings:/grouping` containers exist (not yet enumerated).
+`settings:/mediaPlayer/multiroomBlacklist` = `["airplay","googlecast","roon","qobuzconnect"]`
+— those four sources cannot be fanned out to a third-party multiroom group, because each owns
+its own grouping mechanism. Worth knowing before designing any group feature.
+
+### The tree describes the *platform*, not this *unit* **[measured]**
+
+The S3 has no display and no microphone. The settings tree has settings for both.
+
+`settings:/ui` carries `displayBrightness` (with an enum of legal values),
+`standbyDisplayBrightness`, `standbyScreenEnable`, `standbyScreenType: "clock"`,
+`playScreenReturnTimer`, `keyboardLayout: "qwerty"`, and — conclusively —
+`skinSettings`, which enumerates front-panel skins for **320×240, 480×272, 800×480 and
+800×600** displays with asset paths under `skins/skin-streamsdk/`. Likewise
+`settings:/mediaPlayer` has `micMute`, `micVolume`, `micAmplification` and
+`disableMicEchoCanceling`, and the web client duly renders a **Mic-mute** toggle on a device
+with no microphone.
+
+None of that is a bug or a hidden feature. It is a **shared platform image**: StreamSDK's
+reference firmware supports touchscreen front panels, microphones and voice assistants, and
+ships those settings to every product built on it. The same image also carries this vendor's
+`productModel_fosis3lite` / `_fosis5` entries and hardware-variant nodes suffixed
+`_streamkit1832`, `_streamkit1955`, `_streamkit3d`, `_stream210streamer`. One firmware, many
+SKUs; each SKU ignores what it does not have.
+
+**This is a hard constraint on the "render the tree generically" idea (§5.4), and the most
+important design lesson from this session.** A charm that walks the tree and draws a control
+for every `modifiable` node will confidently offer the user display brightness and microphone
+gain on a device with neither. **Node presence does not imply hardware presence, and the tree
+does not advertise which is which.** Generic rendering therefore needs a capability filter —
+either a per-model allow-list we maintain, or a probe that infers presence from behaviour —
+and that filter, not the rendering, is the real work.
+
+### Services present in the settings tree
+
+`airable2`, `airplay`, `appleAuthChip`, `bleControl`, `bluetooth`, `fwupdate`, `googleCastLite`,
+`grouping`, `hostlink`, `illusonic`, `imx8AudioFramework`, `machine`, `mediaPlayer`, `multiroom`,
+`musicLibrary`, `network`, `oauth2`, `pipewire`, `playlists`, `powerManager`, `qobuzConnect`,
+`roon`, `sddp`, `simpleSoundServer`, `spotify`, `system`, `tidalConnect`, `timeManager`, `ui`,
+`upnpRenderer`.
+
+Note `roon` — the web client's Home screen lists **Roon Ready** as a first-class service
+**[measured, from the UI]**, which supersedes the vendor page's "Roon not yet certified"
+**[vendor]**. Also `appleAuthChip` (a real Apple auth coprocessor, i.e. licensed AirPlay 2)
+and `illusonic` (a licensed DSP/room-correction stack — worth a look later).
 
 ---
 
-## 4. Open questions (the bench agenda)
+## 4. Held against the LinkPlay yardstick
 
-1. Does `httpapi.asp` answer at all? (One request settles hypothesis A vs B.)
-2. What ports are open? Expect 80; check 443, 8080, 8443, 49152–49155 (UPnP), 8819 (LinkPlay's
-   private port on WiiM hardware), 5000, 1900/udp.
-3. What does `settings.fcgi` actually render, and what endpoints does its own JavaScript call?
-   (Browser devtools network tab is the fastest route; a port-mirror capture is the fallback —
-   the method is written up in the WiiM capture notes.)
-4. Is there authentication on any of it? (A debug interface reachable unauthenticated on the LAN
-   is a finding in its own right, and shapes what we're willing to ship a charm against.)
-5. Does the UPnP `MediaRenderer` description advertise `AVTransport` **and** `RenderingControl`,
-   or is it render-only/pull-only?
-6. Can input selection (optical / HDMI eARC / BT / network) and output mode be driven from any
-   local surface, or is that app-private? (On the WiiM this class of control *was* app-private in
-   places — see the WiiM notes on features that exist in the app with no reachable command.)
-7. EQ: the product listing advertises a **10-band EQ**, the product page's own spec text says
-   **5-band**, and the development log lists ten-band as "coming soon". Which is in the firmware
-   we actually receive, and is it reachable locally?
-8. Volume granularity: users report the app steps volume by ±5. If the local surface allows ±1,
-   that is a concrete charm win over the vendor app — the same shape of win as the
-   [Windows volume steps](windows-volume-steps.md) note.
+The pre-bench baseline was measured on two known LinkPlay units (WiiM Ultra + WiiM Sound Lite)
+to give the S3 something to be compared against. Both were identical; the S3 matches neither.
+
+| Probe | Stock LinkPlay (WiiM) | **Fosi S3 (StreamSDK)** |
+| --- | --- | --- |
+| TCP 80 | closed | **open — everything lives here** |
+| TCP 8819 | open (private app port) | **closed** |
+| UPnP description | `:49152/description.xml` | `:16500/[uuid].xml` |
+| UPnP service versions | `AVTransport:1`, `RenderingControl:1` + vendor `wiimu:PlayQueue` | **`AVTransport:2`, `RenderingControl:2`** + `tencent:QPlay:1` |
+| `manufacturer` | `Linkplay Technology Inc.` | `Fosi Audio` |
+| Control API | `httpapi.asp?command=…`, HTTPS-only | `/api/getData` · `/api/setData` · `/api/getRows` |
+| API documentation | none official; community-reverse-engineered | **the device serves its own client library** |
+| Bad command | **returns `OK`** (false OK) | HTTP 500 + named error |
+| Schema discovery | trial and error | `getRows` returns types, units, ranges, enums, labels |
+| Change notification | poll | **long-poll event queue with subscriptions** |
+| Volume | 0-100, 1-step | 0-100, 1-step |
+| EQ | 10 band, 0-100 opaque, `EQSetBand` (undocumented, found by probing) | 10 band, **real dB**, self-describing |
+| Auth | none | none |
+
+The one place the WiiM still wins: it has a large body of community documentation and our own
+verified command table. The S3 needs none of that, because it introspects.
 
 ---
 
-## 5. Day one on the bench — the read-only ladder
+## 4a. The web client is a thin skin over a much richer device **[measured]**
 
-A scripted read-only sweep lives beside this note in [`fosi-samples/`](fosi-samples/) and has been
-validated against two LinkPlay devices (it produced §0). It runs SSDP discovery, the port plan, the
-`httpapi.asp` A-vs-B test, the vendor web-surface fetch, and the UPnP description parse in one pass,
-saving every response verbatim:
+Worth stating separately, because it is the entire commercial argument for the charm.
+
+The bundled web client at `/webclient/` presents: a Home screen — **Music Services:** Qobuz
+Connect, Spotify, Roon Ready, Tidal; **Media Sources:** Google Cast, AirPlay, UPnP, Bluetooth,
+Line In (RCA), HDMI In, Optical In; **Control:** Mute, Mic-mute; **Audio Output Mode:** RCA/XLR
+Out or Optical Out; a transport bar with play/pause and volume — an Equalizer tab, and a
+Settings tab with seven entries — *Audio Processing, Bluetooth, Network Setup, Network Info,
+Firmware Version & Update, Services Settings, Device Settings*. Several of those are close to
+empty: *Services Settings* holds two items (AirPlay, Qobuz Connect), and the Qobuz page is a
+single line — "Currently selected maximum audio quality — Hi-Res Level 3" — which is tappable
+and offers CD / Hi-Res Level 1 / 2 / 3. One setting, one page.
+
+That one page is also the cleanest live demonstration of the self-describing tree: it *is*
+`settings:/qobuzConnect/maxAudioQuality` (`modifiable: true`, value `hiResLevel3`, `edit:
+{"type":"enum_","enumPath":"settings:/qobuzConnect/audioQualities"}`) rendered as a picker
+over its own enum, with the sibling `maxSupportedAudioQuality` (not modifiable) as the
+ceiling. The vendor client is doing exactly what §5.4 proposes — it just does it for very few
+nodes.
+
+The API underneath, by contrast, exposes **47 top-level containers under `settings:` alone**.
+Four of them enumerated in this session (`settings:` root, `/mediaPlayer`, `/bluetooth`,
+`ui:/settings/audio/eq`) already account for ~120 individually addressable nodes with types,
+units, ranges and legal-value enums. Roughly thirty containers remain unopened.
+
+Concrete things the API has and the vendor's own client does not surface at all: bass, treble,
+balance, loudness, attenuation, power-on volume policy, A2DP output mode, Auracast/LE Audio
+broadcast, the multiroom blacklist, per-input ALSA format and live sample-rate reporting, and
+the entire `illusonic` DSP container.
+
+**So the ceiling on a charm here is not "reimplement the Fosi web client".** It is "expose the
+device the vendor's client keeps hidden" — which is the same shape of win as the WiiM charm,
+but with far more headroom and none of the reverse-engineering cost.
+
+---
+
+## 5. What this means for the charm **[inferred]**
+
+1. **Build the StreamSDK charm, not a Fosi charm.** The API is the platform's. Naming it after
+   the vendor would undersell where it can be pointed later.
+2. **The renderer charm is now the *fallback*, not the plan.** The pre-bench reasoning said
+   build UPnP first because it was the only plane confidently available. NSDK is strictly
+   richer than AVTransport/RenderingControl — it carries input format, EQ, tone, BT mode, and
+   per-node edit metadata that UPnP has no concept of. Keep UPnP as the generic path for
+   *other* renderers; drive this device natively.
+3. **The event queue replaces polling.** `modifyQueue` + `pollQueue` is a real subscription
+   model — the charm can hold a long-poll and update on change instead of the 3-second poll the
+   WiiM charm needs. That is a visibly better console.
+4. **Generic control rendering is on the table** (§2, "the tree describes itself"). Highest-value
+   idea to come out of this bench session, and it needs a design decision, not just code.
+5. **No proxy change needed.** The device is plain HTTP on :80, and the hub's `POST /api/proxy`
+   already allows private-IP HTTP targets. The https work done for the WiiM is not required here.
+6. **Volume is already 1-step** over the API, so the "±5 in the app" complaint from the
+   community log is an app limitation the charm simply does not inherit — a free win of the
+   same shape as the [Windows volume steps](windows-volume-steps.md) note.
+
+---
+
+## 6. Security note — unauthenticated *as shipped*, and it is not a small surface
+
+`authMode: none` out of the box, no credential required, port 80 open to the LAN. What that
+exposes is not just volume: the settings root is literally titled **"Settings (debug)"**, it is
+writable (`modifiable: true` on much of it), and the tree includes `fwupdate` alongside the
+vendor-documented `settings.fcgi` firmware-upload page.
+
+Consequences worth stating plainly:
+
+- As shipped, any device on the network — any browser tab, any script — can read the full
+  configuration and change it. There is no authorization boundary until one is set.
+- **The fix is one setting away and the vendor built the UI for it** (§2): *Device Settings →
+  Change Device Password*, which moves `authMode` off `none`. On any network shared with
+  anything untrusted, set it. `setData` mode is the sensible choice: it closes the write side
+  (including firmware) and leaves monitoring open.
+- The charm must work in **both** states — credential-free on a bench unit, and carrying a
+  stored write credential when the operator has set one — and must never surface the
+  `fwupdate` or `settings.fcgi` paths in either. Every device-supplied string is hostile input
+  (HTML-escape, no auto-linkify), exactly as the WiiM charm does.
+- **Measured 2026-08-16: setting a password in the vendor UI does not enable enforcement.**
+  The operator set one via *Change Device Password*; afterwards `authMode` still read `none`,
+  an unauthenticated no-op write (`settings:/mediaPlayer/mute` = its current value) still
+  returned HTTP 200, and no browser (including a private window) was ever prompted. The page
+  is `ui:/settings/security/changePasswd` — three `string_` form fields (`oldPw`, `newPw1`,
+  `newPw2`, `edit.password: true`) plus an `apply` action — served from the device tree, and
+  it stores a credential only. **The vendor UI has no control for `authMode` anywhere**
+  (every Device Settings entry walked), so as shipped the password page is inert on its own:
+  enforcement needs an API write of `settings:/webserver/authMode` = `setData`.
+- That write carries **lockout risk**: if the stored credential did not take (the UI gives no
+  confirmation), flipping the mode gates the revert too, and factory reset
+  (`ui:/settings/factoryReset`) is the way back. Sequence when this is done: confirm the
+  store by re-applying the same password with itself as *Old Password* → snapshot `authMode`
+  → flip → measure unauth read / unauth write / auth write → learn the challenge scheme from
+  the failing write's `WWW-Authenticate`. **Not yet done — parked by operator decision.**
+
+**Do not** exercise the firmware-update control while exploring. It is the one thing reachable
+here that can brick the unit.
+
+---
+
+## 7. Open items
+
+1. **Source selection** — enum on `settings:/custom/lastAudioSource` is now fully mapped
+   (§3, *Fosi's own nodes*). Still open: whether *writing* that node performs the switch or
+   the app activates a different node that this one merely records. One write in the sweep
+   settles it; the browser devtools network tab on the web client's Home screen is the
+   zero-risk way to see the exact call first.
+2. `settings:/multiroom` and `settings:/grouping` not enumerated.
+3. `illusonic` (DSP/room correction) and `imx8AudioFramework` unexplored.
+4. Audio Output Mode (the web client has a control for it) — path not located.
+5. Auracast **[untested]** — capability present, needs an LE Audio receiver to verify.
+6. No write has been sent to this device yet. The whole session was read-only. The
+   snapshot → write → read-back → restore sweep is still to do.
+7. `getRows` pagination behaviour past `to=40` unverified (`rowsCount` is returned, so paging
+   is presumably supported; not exercised).
+
+---
+
+## 8. Rules carried over from the WiiM work
+
+- **Success is read-back, never the reply.** Relaxed but *not* retired here: this device does
+  report bad paths honestly, but a well-formed write to the wrong node still succeeds silently.
+- **Snapshot → test → restore** for every write probe.
+- **Read-only first.** Complete the read sweep before sending a single write. (Done — this
+  entire note is read-only.)
+- **Never flash firmware to explore.**
+- **Label the unknowns.** "No path found" ≠ "no such control" — §7 item 1 is a search failure,
+  not a conclusion.
+
+---
+
+## 9. Day one on the bench — the read-only ladder
+
+The scripted sweep beside this note in [`fosi-samples/`](fosi-samples/) produced §1 and §4:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File fosi-probe.ps1 -Ip <address>
 ```
 
-The same ladder by hand, in order, if the script is not available. Every step is a GET; nothing
-below changes device state:
+Then the NSDK ladder, all GETs, nothing changed:
 
 ```sh
-# 0. find it (and note its MAC - the module OUI is a strong platform hint)
-arp -a
+# the API client library the device serves - read this first, it is the contract
+curl -s "http://<ip>/jsapi/nsdk-api.js"
 
-# 1. what answers? (80 vs 8819 is the discriminator from section 0)
-#    any port scanner, or just try the two that matter:
-curl -sS -m 5 -o /dev/null -w '%{http_code}\n' http://<ip>/
-curl -sS -m 5 -k -o /dev/null -w '%{http_code}\n' https://<ip>/
+# is anything guarding it?
+curl -s "http://<ip>/api/getData?path=settings:/webserver/authMode&roles=value"
 
-# 2. hypothesis A vs B - one request settles it
-curl -sS -m 6 -k "https://<ip>/httpapi.asp?command=getStatusEx"
-curl -sS -m 6    "http://<ip>/httpapi.asp?command=getStatusEx"
+# what is it playing, and in what format?
+curl -s "http://<ip>/api/getData?path=player:player/data/value&roles=value"
+curl -s "http://<ip>/api/getData?path=player:volume&roles=value"
 
-# 3. the vendor surface Fosi documents
-curl -sS -m 6 "http://<ip>/settings.fcgi"
-
-# 4. UPnP: the description tells you the services, the services tell you the charm
-curl -sS -m 6 "http://<ip>:49152/description.xml"
+# walk the tree - @all gives types, units, ranges, enums and labels
+curl -s "http://<ip>/api/getRows?path=settings:&roles=@all&from=0&to=40"
+curl -s "http://<ip>/api/getRows?path=settings:/mediaPlayer&roles=@all&from=0&to=40"
+curl -s "http://<ip>/api/getRows?path=settings:/bluetooth&roles=@all&from=0&to=40"
+curl -s "http://<ip>/api/getRows?path=ui:/settings/audio/eq&roles=@all&from=0&to=30"
 ```
 
-Then, and only then, open `settings.fcgi` in a browser with devtools on the network tab — the
-page's own XHR calls are the fastest route to whatever endpoints Fosi did not document. A
-port-mirror packet capture is the fallback if the page turns out to talk over something other
-than plain HTTP.
-
-**Do not** exercise the firmware-update control while exploring. It is the one thing on that page
-that can brick the unit.
+The web client at `http://<ip>/webclient/` is a React SPA; its bundle at
+`/webclient/index.js` contains the NSDK paths it uses and is worth grepping when a control's
+path is not obvious. Its devtools network tab is the fastest way to close §7 item 1.
 
 ---
 
-## 6. Rules carried over from the WiiM work
-
-These are hard-won and apply to any LinkPlay-lineage or embedded-Linux streamer, so they govern
-this investigation from the start:
-
-- **Success is read-back, never the reply.** LinkPlay-family devices answer `OK` to any parseable
-  command, including no-ops and invented verbs. Three false OKs were measured in a single day on
-  the WiiM. **No command is "verified" here until a getter shows the changed state**, and the
-  device is restored afterwards.
-- **Snapshot → test → restore** for every write probe.
-- **Read-only first.** Complete the whole read sweep before sending a single write.
-- **Never flash firmware to explore.** `settings.fcgi` is an update surface; we read it, we do not
-  exercise it.
-- **Label the unknowns.** "No command found" ≠ "impossible" — it means our search failed, and the
-  capture rig is the next step, not a conclusion.
-
----
-
-## 7. Charm prerequisites already in place
-
-- `POST /api/proxy` — the hub's LAN proxy (browser→device CORS bypass), private targets only, and
-  since the WiiM work it accepts **https** targets with per-request certificate handling. If the S3
-  is plain-HTTP on :80, no proxy change is needed at all.
-- SSDP discovery (`SsdpCore`) and the hub's endpoint scan already find and name UPnP devices on the
-  LAN — the S3 should appear there the moment it joins the network, which is itself probe #0.
-- The charm pattern (JSON manifest + full console page, proxy-only I/O, poll on an interval,
-  explicit UNREACHABLE state) is established; the S3 charm follows it.
-
----
-
-## 8. Status log
+## 10. Status log
 
 | Date | Event |
 | --- | --- |
-| 2026-08-15 | Note opened. Desk research only. Device **not seen on the bench LAN** (ARP sweep shows no new LinkPlay-OUI host beyond the two known WiiM units) — nothing probed yet. |
-| 2026-08-15 | Unit confirmed inbound, not yet on hand. Read-only probe written and **validated against two LinkPlay devices**, producing the §0 baseline. Day-one ladder written. Waiting on hardware. |
+| 2026-08-15 | Note opened. Desk research only. Device not on the bench LAN. |
+| 2026-08-15 | Read-only probe written and validated against two LinkPlay devices, producing the §4 baseline. Waiting on hardware. |
+| 2026-08-16 | **Unit on the bench at a static LAN address, playing via optical in.** Probe run. Platform identified as **StreamUnlimited StreamSDK, not LinkPlay** — pre-bench premise corrected. Full NSDK API contract recovered from the device's own `/jsapi/nsdk-api.js`. Read-only enumeration of `settings:`, `settings:/mediaPlayer`, `settings:/bluetooth`, `ui:/settings/audio/eq`, live player state. Auth confirmed `none`. No write sent. |
+| 2026-08-16 | Operator set a device password (vendor UI) → measured **not enforced** (`authMode` stays `none`, unauth write still 200). Thread parked. Operator then **factory reset** (`ui:/settings/factoryReset`): back on the same address in under a minute; device name → factory `S3-<6 digits>`; **all ten EQ bands → 0.0** (UI and API agree); `systemMemberId` regenerated; stored password gone. `audioOutputMode` / `lastAudioSource` re-appeared with fresh timestamps and optical-in was playing again — whether operator re-selection or boot-time re-apply is unresolved. |
 
 ---
 
 ## Sources
 
-- Fosi Audio — [S3 product page](https://fosiaudio.com/products/s3-balanced-hifi-streamer) (specs, protocol list, Roon status, `settings.fcgi` update procedure)
-- Fosi Audio — [Introducing the S3](https://fosiaudio.com/blogs/news/introducing-the-s3-our-first-hifi-music-streamer)
-- Fosi Audio — [Official statement on the S3 app experience](https://fosiaudio.com/blogs/news/official-statement-on-the-fosi-audio-s3-app-experience) (app is not LinkPlay-based; Qobuz Connect, 10-band EQ roadmap)
-- Fosi Audio Community — [S3 Streamer Development Log](https://community.fosiaudio.com/threads/s3-streamer-development-log.5521/) (DLNA/SMB behaviour, ten-band EQ "coming soon", volume-step complaints, Roon timeline, Home Assistant deprioritised)
-- TNT-Audio — [Fosi S3 review](https://www.tnt-audio.com/sorgenti/fosi_s3_e.html) (Amlogic A113X in LinkPlay Stream1832AE module)
-- Darko.Audio — [Fosi Audio enters the streaming age with the S3](https://darko.audio/2026/03/fosi-audio-enters-the-streaming-age-with-the-s3/)
-- audioXpress — [Fosi Audio introduces S3](https://audioxpress.com/news/fosi-audio-introduces-s3-high-resolution-streamer-dac-and-preamp)
-- LinkPlay `httpapi.asp` community documentation — [AndersFluur/LinkPlayApi](https://github.com/AndersFluur/LinkPlayApi), [n4archive/LinkPlayAPI](https://github.com/n4archive/LinkPlayAPI), [Arylic HTTP API](https://developer.arylic.com/httpapi/)
-- SWUpdate (`.swu` format) — [swupdate.org](https://sbabic.github.io/swupdate/)
+Measured facts above come from the device itself. Background and superseded claims:
+
+- Fosi Audio — [S3 product page](https://fosiaudio.com/products/s3-balanced-hifi-streamer) (`settings.fcgi` update procedure; Roon status now superseded by the shipping firmware)
+- Fosi Audio — [Official statement on the S3 app experience](https://fosiaudio.com/blogs/news/official-statement-on-the-fosi-audio-s3-app-experience) ("app is not LinkPlay-based" — correct, and now explained: the platform is StreamUnlimited)
+- Fosi Audio Community — [S3 Streamer Development Log](https://community.fosiaudio.com/threads/s3-streamer-development-log.5521/) (ten-band EQ "coming soon" — present in this firmware; volume-step complaints — an app limitation, not an API one)
+- TNT-Audio — [Fosi S3 review](https://www.tnt-audio.com/sorgenti/fosi_s3_e.html) — **superseded**: reports the Stream1832AE module as LinkPlay's; the device reports StreamUnlimited
+- StreamUnlimited — [streamunlimited.com](https://www.streamunlimited.com/) (StreamSDK / StreamKit platform vendor)
+- Rygel / GUPnP — the UPnP MediaRenderer implementation this firmware uses
+- Bluetooth SIG — Auracast / LE Audio Broadcast Audio Profile (BAP)
+- [wiim-http-api-reference.md](wiim-http-api-reference.md) — the LinkPlay contrast case; **does not apply to this device**

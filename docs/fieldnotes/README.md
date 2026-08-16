@@ -10,6 +10,7 @@ because the next person (often us, six months later) shouldn't have to rediscove
 | [WiiM Ultra field notes](wiim-ultra-field-notes.md) | Owning a WiiM Ultra over its HTTP API — no vendor app required, including an undocumented timezone command |
 | [WiiM HTTP API reference](wiim-http-api-reference.md) | Every command as measured — verified/accepted/false-OK/dead, undocumented EQ band read+write, enum tables |
 | [Devialet Phantom field notes](devialet-phantom-field-notes.md) | The Phantom's local REST API — source switching by playing, firmware field drift, and the transient-mute trap |
+| [Fosi Audio S3 field notes](fosi-s3-field-notes.md) | Not the LinkPlay box the press said — a StreamUnlimited StreamSDK device that serves its own API client and a self-describing settings tree, unauthenticated |
 | [Windows volume steps](windows-volume-steps.md)     | Why volume keys move in 2% jumps, why the registry hack is a myth, and every real way to get finer control |
 | [Bench tools](bench-tools.md)                       | The tools that keep earning their place on the bench                                                       |
 
@@ -17,8 +18,8 @@ Runnable companions live beside the notes — see
 [`wiim-samples/`](wiim-samples/) for the live device watcher used in the
 WiiM notes, and [`fosi-samples/`](fosi-samples/) for `fosi-probe`, a read-only
 first-contact sweep for an unknown network audio device (SSDP census, port plan,
-platform test, vendor web surface, UPnP service list). It is device-agnostic and
-useful on its own; the field note it was written for is still pre-bench and so is
-not listed above.
+platform test, vendor web surface, UPnP service list). It is device-agnostic; its
+first real target, the Fosi S3, is written up above — and the probe's one-glance
+LinkPlay-or-not discriminator called it correctly on the first run.
 
 
