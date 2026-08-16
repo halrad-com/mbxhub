@@ -498,6 +498,49 @@ Also present and unexplored: `settings:/imx8AudioFramework/dolby` (28 rows — D
 virtualiser profiles), `settings:/roon` (7), `settings:/googleCastLite` (28),
 `settings:/airplay` (21), `settings:/system` (31).
 
+### The write side — captured, not guessed **[measured / source]**
+
+The vendor web client is plain HTTP on :80, so a Fiddler session while clicking through it
+records every write verbatim; the client's own source (`API_PATHS` table + `PlayerInterface`)
+supplies the rest. No probe write was needed. `[cap]` = seen on the wire; `[src]` = read from
+the client bundle, shape certain, not yet observed.
+
+| Action | Request (`POST /api/setData`) | |
+| --- | --- | --- |
+| Mute on/off | `{"path":"settings:/mediaPlayer/mute","role":"value","value":{"type":"bool_","bool_":true}}` | [cap] |
+| Mic-mute | `{"path":"player:micMute","role":"value","value":{"type":"bool_","bool_":…}}` | [cap] |
+| **Select Line In** | `{"path":"ui:/aux","role":"activate","value":{"type":"bool_","bool_":true}}` | [cap] |
+| **Select HDMI In** | `{"path":"ui:/hdmi","role":"activate", …}` | [cap] |
+| **Select Optical In** | `{"path":"ui:/spdifin","role":"activate", …}` | [cap] |
+| Select Bluetooth | `activate ui:/shortBluetooth` | [src — Home tree action node] |
+| **Output → RCA/XLR** | `activate ui:/custom/audioOutputModeFalse` | [src — Home tree action node] |
+| **Output → Optical** | `activate ui:/custom/audioOutputModeTrue` | [src — Home tree; `preferred:true` marks current] |
+| Resume Qobuz Connect | `{"path":"qobuzconnect:/resumePlayback","role":"activate", …}` | [cap] |
+| Play / Pause / Stop / Next / Previous | `activate player:player/control` with `value: {"control":"play"|"pause"|"stop"|"next"|"previous"}` | [src — `PlayerInterface.basePlayerController`] |
+| Like / Dislike | same node, `control: "like"|"dislike"` (also `player:player/control/like`) | [src] |
+| Play a browsed item | same node, `value: {control:"play", mediaRoles, trackRoles, type:"itemInContainer"?, index}` | [src] |
+| Volume | `setData player:volume` role `value`, `{"type":"i32_","i32_":N}` 0-100 | [src] |
+| Seek | `player:player/data/playTime` | [src — path constant; payload unobserved] |
+| Play mode (shuffle/repeat) | `player:player/data/playMode` (enum at `settings:/mediaPlayer/playModes`) | [src] |
+| Change password | `webserver:changePassword` — the real node behind the `ui:` form | [src] |
+| Standby / power | `powermanager:target` (read: `{target:"online", reason:"userActivity"}`) | [src] |
+| Enabled features (machine-level) | `machine:enabledFeatures` | [src] |
+| Firmware | `firmwareupdate:checkForUpdate` / `downloadNewUpdate` / `installUpdate` / `updateStatus` — **never call from a charm** | [src] |
+
+The client also appends `"platform":"windows"` to every write body — harmless extra field.
+
+**So `settings:/custom/lastAudioSource` is a record, not a control** — selection is the
+`activate` on the `ui:` action nodes, and the integer follows. And the **Home screen itself is a
+tree read**: `getRows path=ui:&roles=@all&type=structure` (note: bare `ui:` with the
+`type=structure` parameter — the same path *without* it is what refused earlier) returns the 19
+Home rows verbatim: service containers, `type: app` deep-links for Roon/Tidal, the four source
+`action` nodes, Mute/Mic-mute value nodes, and the two output-mode actions. Together with
+`ui:/settings` that is **the entire vendor UI as data.**
+
+Live-update is the event queue: `POST /api/event/modifyQueue` `{"queueId":"","subscribe":[{"path":…,"type":"item"|"itemWithValue"|"rows"}],"unsubscribe":[]}` returns a queue id;
+then `GET /api/event/pollQueue?queueId=…&timeout=1500` long-polls (47 of 303 captured
+requests were exactly this loop).
+
 ### Services present in the settings tree
 
 `airable2`, `airplay`, `appleAuthChip`, `bleControl`, `bluetooth`, `fwupdate`, `googleCastLite`,
@@ -640,17 +683,16 @@ here that can brick the unit.
 
 ## 7. Open items
 
-1. **Source selection** — enum on `settings:/custom/lastAudioSource` is now fully mapped
-   (§3, *Fosi's own nodes*). Still open: whether *writing* that node performs the switch or
-   the app activates a different node that this one merely records. One write in the sweep
-   settles it; the browser devtools network tab on the web client's Home screen is the
-   zero-risk way to see the exact call first.
+1. **Source selection** — CLOSED. Captured on the wire: `activate ui:/aux|hdmi|spdifin`;
+   `lastAudioSource` merely records the result (§3, *The write side*).
 2. `settings:/multiroom` and `settings:/grouping` not enumerated.
 3. `illusonic` (DSP/room correction) and `imx8AudioFramework` unexplored.
 4. Audio Output Mode (the web client has a control for it) — path not located.
 5. Auracast **[untested]** — capability present, needs an LE Audio receiver to verify.
-6. No write has been sent to this device yet. The whole session was read-only. The
-   snapshot → write → read-back → restore sweep is still to do.
+6. Write paths are now known from capture + client source (§3, *The write side*); the only
+   ones not yet *observed* are volume, seek, play-mode and EQ-band writes (`[src]` rows) — a
+   second Fiddler pass covering those closes them with zero device risk. Sweep-by-probe is
+   no longer needed.
 7. `getRows` pagination behaviour past `to=40` unverified (`rowsCount` is returned, so paging
    is presumably supported; not exercised).
 
