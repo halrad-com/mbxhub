@@ -200,6 +200,29 @@ intermittently loses devices:
 This is the same lesson as the timeout row, arriving from a direction that looks like a real
 negative rather than a silence — which is what makes it dangerous.
 
+### …and it may never advertise at all
+
+Boot order is only the transient version of the problem. **UPnP is a feature, and features can be
+switched off.** A device whose owner has disabled UPnP/DLNA — or whose platform ships it off, or
+firewalls it — will never serve a description, no matter how long you wait.
+
+So a missing description has at least three causes that look identical from outside:
+
+1. still booting,
+2. **advertising disabled by configuration**,
+3. genuinely not that platform.
+
+Only the third is the one you were testing for. This is the strongest argument for the confidence
+field below: **passive identification can fail permanently on a device that is definitely a
+supported platform**, so "unknown" has to be a real outcome that falls through to an active probe
+or to asking a human — never a quiet default to whichever family is most common.
+
+It is also why the active ladder exists at all. Passive-first is right because it is free and safe,
+not because it is sufficient.
+
+*(Whether these specific units expose a UPnP toggle is unverified here — the point stands on the
+general fact that advertising is optional.)*
+
 ---
 
 ## Never send
