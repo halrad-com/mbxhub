@@ -79,19 +79,33 @@ brand shipping the same platform will look identical there and different everywh
 because it is structural — it names the UPnP implementation, cannot be rebranded without changing
 the stack, and is present in the document you already fetched.
 
-### LinkPlay (WiiM)
+### LinkPlay (WiiM) — measured live
 
 | Signal | Value |
 | --- | --- |
 | Device description | `:49152/description.xml` |
+| Service type | **`urn:schemas-wiimu-com:service:PlayQueue:1`** ← **decisive** |
+| `manufacturer` | `Linkplay Technology Inc.` (model: `WiiM Ultra Receiver`) |
+| Service versions | all core services at **`:1`** |
+| Open ports | 443, 8443, 8819, 49152, 8008, 8009 |
 | Port 80 | **closed** — discriminating on its own |
-| Port 8819 | open |
-| Vendor API | `httpapi.asp`, **HTTPS only** (plain HTTP refused) |
+| Vendor API | `httpapi.asp`, **HTTPS only** (plain HTTP refused outright) |
+| Ethernet OUI | `00:22:6C` |
 
-> **Unverified:** the LinkPlay description is believed to also carry `manufacturer` =
-> "Linkplay Technology Inc." and a `wiimu:PlayQueue` service type. Recollection from a probe run,
-> **not** confirmed here — both bench units were powered down. The port and path discriminators
-> above stand without it.
+`wiimu:PlayQueue` is the dependable tell — it names the platform's own service, in the document
+discovery already fetched. It is the LinkPlay counterpart of StreamSDK's `LibRygelRenderer`.
+
+### Two cheap tells that fall out of comparing the two
+
+**Service version.** LinkPlay advertises its core services at `:1`; the Rygel-based StreamSDK box
+advertises them at `:2` and declares `MediaRenderer:2`. A free extra signal from a document you
+already have — corroborating, not decisive on its own.
+
+**And a caution on `manufacturer`.** On the WiiM it names the *platform* (`Linkplay Technology
+Inc.`, since WiiM is LinkPlay's own brand); on the Fosi it names the *reseller* (`Fosi Audio`,
+with the platform hiding in `modelURL`). So the field means different things on different boxes and
+**cannot be trusted alone** — which is exactly why the structural tells (`wiimu:PlayQueue`,
+`LibRygelRenderer`, `modelURL`) are the ones to identify on.
 
 > ### ⚠ `QPlay` is NOT a LinkPlay tell — measured
 >
@@ -163,6 +177,28 @@ The most common identification bug is scoring silence as a negative. It is not o
 
 The timeout row has bitten this bench directly: a port was scored closed on a device that simply was
 not answering that day, and the wrong conclusion survived into notes until it was re-measured.
+
+### A device can be up and not yet advertising
+
+Measured while writing this note. Seconds after a WiiM Ultra was powered on, its **vendor API
+already answered** (`httpapi.asp` over HTTPS, `200`) while its **UPnP description on `:49152` was
+still refusing connections**. Minutes later the same port served the description fine.
+
+The subsystems come up at different times, and SSDP is worse: the unit did not appear in a
+multicast sweep at all while it was perfectly reachable by direct address.
+
+Two rules follow, and they are the difference between a classifier that works and one that
+intermittently loses devices:
+
+- **A refusal on one surface says nothing about the device.** During that window, probing `:49152`
+  and concluding "not LinkPlay" would have been wrong on a device whose vendor API was answering at
+  that exact moment.
+- **Absence from a discovery sweep is not absence from the network.** Re-probe by address before
+  concluding anything, and prefer the passive fingerprint from a description you have *already*
+  fetched over a fresh probe against a device that may be half-awake.
+
+This is the same lesson as the timeout row, arriving from a direction that looks like a real
+negative rather than a silence — which is what makes it dangerous.
 
 ---
 
