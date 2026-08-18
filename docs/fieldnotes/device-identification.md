@@ -50,29 +50,64 @@ quiet; identification is a second, deliberate step.
 
 All measured.
 
-| | **LinkPlay** (WiiM) | **StreamUnlimited StreamSDK** (Fosi S3) |
-| --- | --- | --- |
-| Device description | `:49152/description.xml` | `:16500/[uuid].xml` |
-| `modelURL` | — | `http://www.streamunlimited.com/` ← **decisive** |
-| SSDP `Server:` header | — | `Linux/…  UPnP/1.0 GUPnP/…` (Rygel/GUPnP stack) |
-| Port 80 | **closed** | **open** |
-| Port 8819 | open | closed |
-| Ports 49152–49155 | 49152 open | closed |
-| Vendor API | `httpapi.asp`, **HTTPS only** (plain HTTP refused) | `/api/getData?path=…` over plain HTTP |
-| UPnP services | `AVTransport` + `ConnectionManager` + `RenderingControl` | same three |
+### The rule that makes this work on white-label hardware
 
-Two independent tells per family, from one document plus a two-port check. **The description port
-alone separates them** — 49152 versus 16500 — which is a pleasant accident of two vendors picking
-different defaults, and worth confirming rather than trusting blindly on hardware you have not seen.
+**`manufacturer` is the brand. `modelURL` is the platform.** These devices are OEM builds — the
+badge on the front and the software inside come from different companies — so the field that names
+the *seller* tells you nothing about the *dialect*, while the field that names the platform vendor
+tells you everything.
+
+Measured on a Fosi S3: `manufacturer` is **`Fosi Audio`**, `manufacturerURL` is `fosiaudio.com` —
+and `modelURL` is **`http://www.streamunlimited.com/`**. Identify on the second one. Any other
+brand shipping the same platform will look identical there and different everywhere else.
+
+### StreamUnlimited StreamSDK — measured live
+
+| Signal | Value |
+| --- | --- |
+| `modelURL` | `http://www.streamunlimited.com/` ← **decisive** |
+| Device description | `:16500/[uuid].xml` (UDN as the filename) |
+| SSDP `Server:` | `Linux/… UPnP/1.0 GUPnP/…` |
+| Control URLs | `/Control/LibRygelRenderer/…` ← **decisive, and free**: already in the document |
+| Icon URLs | `/LibRygelRenderer-120x120x24.png` — the same tell again |
+| `deviceType` | `MediaRenderer:2`, with all three services at version `:2` |
+| `presentationURL` | `http://<device-ip>:80/` — corroborates port 80 open |
+| DLNA | `DMR-1.51` |
+| Vendor API | `/api/getData?path=…` over plain HTTP |
+
+`LibRygelRenderer` appearing in the control and icon URLs is the strongest passive tell of the lot,
+because it is structural — it names the UPnP implementation, cannot be rebranded without changing
+the stack, and is present in the document you already fetched.
+
+### LinkPlay (WiiM)
+
+| Signal | Value |
+| --- | --- |
+| Device description | `:49152/description.xml` |
+| Port 80 | **closed** — discriminating on its own |
+| Port 8819 | open |
+| Vendor API | `httpapi.asp`, **HTTPS only** (plain HTTP refused) |
+
+> **Unverified:** the LinkPlay description is believed to also carry `manufacturer` =
+> "Linkplay Technology Inc." and a `wiimu:PlayQueue` service type. Recollection from a probe run,
+> **not** confirmed here — both bench units were powered down. The port and path discriminators
+> above stand without it.
+
+> ### ⚠ `QPlay` is NOT a LinkPlay tell — measured
+>
+> An earlier draft of this note listed `tencent:QPlay` as a LinkPlay fingerprint. **That is wrong,
+> and it would have produced a false positive on the first device it met.** The Fosi S3 —
+> StreamSDK, not LinkPlay — advertises `urn:schemas-tencent-com:service:QPlay:1`, a
+> `qq:X_QPlay_SoftwareCapability` of `QPlay:2.1`, and the tencent XML namespace on its root element.
+>
+> QPlay is a Chinese-market streaming service integration carried by *several* audio platforms. It
+> identifies a market, not a vendor. The general lesson is worth more than the specific correction:
+> **a service type proves the device speaks that service, never who built the device.** Identify on
+> fields that name the implementation — `modelURL`, control-URL paths — not on features that any
+> platform may license.
 
 **Devialet** does not fingerprint from UPnP the same way; it is identified by its control API
 answering at all (below).
-
-> **Unverified, and attractive enough to be worth checking:** the LinkPlay description is believed
-> to carry `manufacturer` = "Linkplay Technology Inc." and vendor service types
-> (`wiimu:PlayQueue`, `tencent:QPlay`). That would be the cleanest tell of the lot. It is
-> recollection from a probe run, it is **not** confirmed here, and the port/path discriminators
-> above stand without it. Confirm before relying on it.
 
 ---
 
