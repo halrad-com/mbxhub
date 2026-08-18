@@ -95,6 +95,27 @@ the stack, and is present in the document you already fetched.
 `wiimu:PlayQueue` is the dependable tell — it names the platform's own service, in the document
 discovery already fetched. It is the LinkPlay counterpart of StreamSDK's `LibRygelRenderer`.
 
+### ⚠ Do not identify on the description port
+
+`49152` looks specific. It is not — it is **the first port of the IANA dynamic/private range**
+(49152–65535, RFC 6335), which is the conventional starting point for any stack that asks the OS
+for "an ephemeral port". It recurs across completely unrelated UPnP implementations for that reason
+alone, and a device that finds it busy will happily bind something else.
+
+What is actually supported by measurement here:
+
+- The WiiM Ultra served its description on `:49152` — **on this unit, on this boot**.
+- Of six other SSDP responders on the same LAN, **none** used `:49152`: they were on `80`, `8080`,
+  `16500`, `35707` and `50201`.
+- The second LinkPlay unit could not be compared — it was offline during this pass, so
+  **consistency across the family is unverified**.
+
+So treat the port as **corroborating, never decisive**. The same caution applies to StreamSDK's
+`:16500`: it is a more distinctive choice, but it is still a default, not an identity.
+
+Identify on the **service types and control URLs** — `wiimu:PlayQueue`, `LibRygelRenderer`,
+`modelURL`. Those name the implementation. A port number names a coincidence.
+
 ### Two cheap tells that fall out of comparing the two
 
 **Service version.** LinkPlay advertises its core services at `:1`; the Rygel-based StreamSDK box
