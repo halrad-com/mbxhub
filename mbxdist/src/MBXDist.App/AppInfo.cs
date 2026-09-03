@@ -11,10 +11,15 @@ public static class AppInfo
     /// <summary>Well-known feed base URL (raw static host). Overridable via --feed.</summary>
     public const string DefaultFeedBaseUrl = "https://raw.githubusercontent.com/halrad-com/mbxhub/main/";
 
-    /// <summary>SHA-1 thumbprint(s) of the code-signing cert MBXDist trusts.
-    /// HALRAD LLC (Sectigo Public Code Signing CA R36, hardware token; valid to 2028-02).
-    /// Multiple entries supported for rotation — add the successor cert alongside before the cutover.</summary>
-    public static readonly string[] PinnedThumbprints = { "7267AEC2ABA9C2F85BEE3D3AC9544417B6694FB4" };
+    /// <summary><b>SHA-256</b> cert hash(es) of the code-signing cert MBXDist trusts.
+    /// HALRAD LLC (CN=HALRAD LLC, O=HALRAD LLC, S=Washington, C=US), issued by
+    /// Sectigo Public Code Signing CA R36, hardware token, valid to 2028-02-04.
+    /// Multiple entries supported for rotation — add the successor cert alongside before the cutover.
+    ///
+    /// <para>These are SHA-256, not SHA-1. <c>signtool verify /v</c> prints a "SHA1 hash" line; that value
+    /// will NOT match here. Read the right one with
+    /// <c>cert.GetCertHashString(HashAlgorithmName.SHA256)</c>.</para></summary>
+    public static readonly string[] PinnedThumbprints = { "C934BA3E5CF720F591E93591A04FE727A303D64EF2F60E1D21A24114744C266E" };
 
     /// <summary>Resource-name tokens for the embedded feed loader.</summary>
     public const string CatalogResourceSuffix = "catalog.json";

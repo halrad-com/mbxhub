@@ -9,10 +9,13 @@ public sealed class PinnedThumbprintPolicy
     public PinnedThumbprintPolicy(IEnumerable<string> pinnedThumbprints)
         => _pinned = new HashSet<string>(pinnedThumbprints.Select(Normalize), StringComparer.Ordinal);
 
+    /// <summary>Accepts when the signature is trusted AND the signer's SHA-256 cert hash matches a
+    /// pinned value. Pinned values are SHA-256 — a SHA-1 thumbprint (what signtool prints) will never
+    /// match, by design.</summary>
     public bool IsAcceptable(SignatureResult result)
     {
-        if (!result.Trusted || string.IsNullOrEmpty(result.Thumbprint)) return false;
-        return _pinned.Contains(Normalize(result.Thumbprint));
+        if (!result.Trusted || string.IsNullOrEmpty(result.ThumbprintSha256)) return false;
+        return _pinned.Contains(Normalize(result.ThumbprintSha256));
     }
 
     private static string Normalize(string t)

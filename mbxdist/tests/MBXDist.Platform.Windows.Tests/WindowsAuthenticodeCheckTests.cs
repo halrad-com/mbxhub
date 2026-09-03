@@ -16,13 +16,15 @@ public class WindowsAuthenticodeCheckTests : IDisposable
         var result = new WindowsAuthenticodeCheck().Check(f);
 
         Assert.False(result.Trusted);
-        Assert.Null(result.Thumbprint);
+        Assert.Null(result.ThumbprintSha256);
     }
 
     [Fact]
     public void Signed_fixture_is_trusted_with_expected_thumbprint()
     {
         // Guarded: runs only when a real signed binary is provided out-of-band.
+        // MBXDIST_SIGNED_THUMBPRINT must be the SHA-256 cert hash, NOT the "SHA1 hash"
+        // that signtool prints — see SignatureResult.
         var fixture = Environment.GetEnvironmentVariable("MBXDIST_SIGNED_FIXTURE");
         var expected = Environment.GetEnvironmentVariable("MBXDIST_SIGNED_THUMBPRINT");
         if (string.IsNullOrEmpty(fixture) || string.IsNullOrEmpty(expected))
@@ -33,7 +35,7 @@ public class WindowsAuthenticodeCheckTests : IDisposable
         Assert.True(result.Trusted);
         Assert.Equal(
             new string(expected.Where(char.IsAsciiHexDigit).ToArray()).ToUpperInvariant(),
-            new string((result.Thumbprint ?? "").Where(char.IsAsciiHexDigit).ToArray()).ToUpperInvariant());
+            new string((result.ThumbprintSha256 ?? "").Where(char.IsAsciiHexDigit).ToArray()).ToUpperInvariant());
     }
 
     public void Dispose()

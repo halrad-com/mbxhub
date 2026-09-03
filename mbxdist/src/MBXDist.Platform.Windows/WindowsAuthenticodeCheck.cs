@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using MBXDist.Core.Verify;
 
@@ -19,9 +20,9 @@ public sealed class WindowsAuthenticodeCheck : ISignatureCheck
     public SignatureResult Check(string filePath)
     {
         bool trusted = IsTrusted(filePath);
-        // Thumbprint is reported whenever a signer cert can be read; trust gates acceptance in the policy.
-        string? thumbprint = TryGetThumbprint(filePath);
-        return new SignatureResult(trusted, thumbprint);
+        // The thumbprint is reported whenever a signer cert can be read; trust gates acceptance in the policy.
+        string? thumbprintSha256 = TryGetSha256Thumbprint(filePath);
+        return new SignatureResult(trusted, thumbprintSha256);
     }
 
     private static bool IsTrusted(string filePath)
@@ -73,13 +74,15 @@ public sealed class WindowsAuthenticodeCheck : ISignatureCheck
         finally { Marshal.FreeHGlobal(pFile); }
     }
 
-    private static string? TryGetThumbprint(string filePath)
+    /// <summary>Reads the embedded Authenticode signer certificate and returns its <b>SHA-256</b> hash.
+    /// Deliberately not <c>cert.Thumbprint</c>, which is SHA-1 and collision-broken — see
+    /// <see cref="SignatureResult"/>.</summary>
+    private static string? TryGetSha256Thumbprint(string filePath)
     {
         try
         {
-            // Reads the embedded Authenticode signer certificate.
             using var cert = new X509Certificate2(X509Certificate.CreateFromSignedFile(filePath));
-            return cert.Thumbprint;
+            return cert.GetCertHashString(HashAlgorithmName.SHA256);
         }
         catch
         {
