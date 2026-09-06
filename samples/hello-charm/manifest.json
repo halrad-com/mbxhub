@@ -1,0 +1,24 @@
+{
+  "id": "com.halrad.samples.hello-charm",
+  "schemaVersion": 2,
+  "kind": "proc",
+  "label": "Hello Charm",
+  "publisher": "HALRAD LLC (sample)",
+  "version": "0.1.0",
+  "icon": "👋",
+  "scopes": [
+    "automation:status"
+  ],
+  "scopeReasons": {
+    "automation:status": "to check whether this hub can run automations before we offer to"
+  },
+  "launch": "(filled in at startup: this executable's own path, plus --launched)",
+  "expand": [
+    {
+      "label": "Say hello",
+      "placement": "menu",
+      "action": "launch",
+      "msg": "Hello Charm says hello"
+    }
+  ]
+}

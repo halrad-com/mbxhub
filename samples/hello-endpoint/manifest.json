@@ -1,0 +1,16 @@
+{
+  "id": "com.halrad.samples.hello-endpoint",
+  "schemaVersion": 2,
+  "kind": "endpoint",
+  "label": "Hello Endpoint",
+  "publisher": "HALRAD LLC (sample)",
+  "version": "0.1.0",
+  "icon": "📮",
+  "endpoint": "(filled in at startup: the address this sample is listening on)",
+  "expand": [
+    {
+      "label": "Ping the endpoint",
+      "placement": "menu"
+    }
+  ]
+}

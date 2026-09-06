@@ -2,8 +2,15 @@
 
 Small, self-contained examples that build on the public MBXHub API. Each folder stands alone — see its own `README.md` / `PROMPT.md` for setup and usage.
 
+**Start with `hello-charm`.** The three `hello-*` samples are the charms SDK end to end: one per
+`kind`, which is the field that decides how MBXHub reaches you. Everything else in the contract —
+the manifest, registration, approval, the ticket, the capability gate — is the same for all three.
+
 | Sample | Language | What it shows |
 | --- | --- | --- |
+| [`hello-charm/`](hello-charm/) | C# (.NET 8) | **`proc`** — the whole registration path: find the hub, register a manifest, wait for a person to approve it, receive a ticket, make gated calls, receive events over the hub's WebSocket, and be launched from inside MusicBee. |
+| [`hello-endpoint/`](hello-endpoint/) | C# (.NET 8) | **`endpoint`** — declare an address and let MBXHub POST your activations to it. Nothing held open, no ticket collected, and the rule it exists to show: registration is loopback-only, the address you declare need not be. |
+| [`hello-page/`](hello-page/) | HTML / JS | **`page`** — the cheapest charm there is: two files, no process, no registration, no ticket. A hub-served page is same-origin with the API, so the open surface needs no credential. Also: how an activation reaches a page, and how to find the folder the two files go in. |
 | [`dynaport/`](dynaport/) | HTML / JS | A browser control that talks to the hub's REST API. |
 | [`lms-dstm/`](lms-dstm/) | Perl | A [Lyrion Music Server](https://lyrion.org/) (formerly Logitech Media Server) plugin that plays MusicBee through MBXHub. |
 | [`mcp/`](mcp/) | TypeScript | A Model Context Protocol server exposing MBXHub to AI assistants. |

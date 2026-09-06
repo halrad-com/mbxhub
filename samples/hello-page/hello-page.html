@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hello Page</title>
+<!--
+  hello-page - a `page` charm.
+
+  The whole charm is this file plus a manifest. There is no process, no
+  registration, no ticket and nothing to install on the machine beyond two
+  copies. MBXHub serves the page; the browser runs it; the person clicks the
+  charm and it opens in place.
+
+  Everything here is deliberately dependency-free and offline: no CDN, no
+  framework, no build step. A charm that needs the internet to draw itself is
+  a charm that breaks on the network this hub is usually on.
+-->
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    margin: 0;
+    padding: 20px;
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: #14161a;
+    color: #e6e8ea;
+  }
+  h1 { font-size: 1.15rem; margin: 0 0 4px; }
+  .sub { color: #9aa1a8; margin: 0 0 18px; }
+  .card {
+    border: 1px solid #2a2f36;
+    border-radius: 8px;
+    padding: 14px 16px;
+    background: #1a1d22;
+    margin-bottom: 14px;
+  }
+  .k { color: #9aa1a8; display: inline-block; min-width: 90px; }
+  .waiting { color: #9aa1a8; font-style: italic; }
+  ol { margin: 6px 0 0; padding-left: 20px; color: #9aa1a8; }
+  code { background: #22262c; padding: 1px 5px; border-radius: 4px; }
+  #log { list-style: none; margin: 0; padding: 0; }
+  #log li { border-top: 1px solid #22262c; padding: 8px 0; }
+  #log li:first-child { border-top: 0; }
+</style>
+</head>
+<body>
+
+<h1>Hello Page</h1>
+<p class="sub">A charm that is only a page. No process, no ticket, no permissions.</p>
+
+<div class="card">
+  <div><span class="k">Served by</span> <span id="origin"></span></div>
+  <div><span class="k">Now playing</span> <span id="np" class="waiting">asking the hub&hellip;</span></div>
+</div>
+
+<div class="card">
+  <strong>Activations</strong>
+  <ul id="log"><li class="waiting">Nothing yet. An activation arrives as a <code>postMessage</code> from the page framing this one.</li></ul>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  document.getElementById('origin').textContent = location.origin;
+
+  // ---- 1. The open surface -------------------------------------------------------
+  // A page charm is served BY the hub, so it is same-origin with the API and needs no
+  // ticket for anything a caller that never registered could also read. This is the
+  // whole of what most page charms ever need.
+  fetch('/nowplaying')
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      var d = j && j.data ? j.data : {};
+      var el = document.getElementById('np');
+      el.className = '';
+      el.textContent = d.title
+        ? (d.title + (d.artist ? ' — ' + d.artist : ''))
+        : 'nothing playing';
+    })
+    .catch(function (e) {
+      var el = document.getElementById('np');
+      el.className = 'waiting';
+      el.textContent = 'could not reach the hub: ' + e.message;
+    });
+
+  // ---- 2. Activations ------------------------------------------------------------
+  // A page charm has no socket and no address of its own, so an activation reaches it
+  // through the page that FRAMES it: the hub broadcasts CharmActivated, the dashboard
+  // recognises the charm id and posts the event into this frame.
+  //
+  // The two checks below are the security of it, and neither is optional:
+  //   - e.origin must be our own origin. The frame route is a same-origin channel;
+  //     anything arriving from elsewhere is somebody else talking to your page.
+  //   - the envelope type must be the one the dashboard sends. A window receives
+  //     messages from browser extensions and dev tools too.
+  window.addEventListener('message', function (e) {
+    if (e.origin !== location.origin) return;
+    var m = e.data;
+    if (!m || m.type !== 'mbxhub.charmEvent' || !m.event) return;
+    record(m.event);
+  });
+
+  function record(ev) {
+    var log = document.getElementById('log');
+    var first = log.querySelector('.waiting');
+    if (first) log.removeChild(first);
+
+    var li = document.createElement('li');
+    // textContent, never innerHTML: entryLabel is a string out of a manifest, which is
+    // the charm author's word and not ours to trust into the DOM.
+    li.textContent = (ev.event || 'event') + '  ·  ' + (ev.placement || '?') +
+                     '  ·  entry ' + (ev.entryIndex === undefined ? '?' : ev.entryIndex) +
+                     ' "' + (ev.entryLabel || '') + '"  ·  ' + (ev.atUtc || '');
+    log.insertBefore(li, log.firstChild);
+  }
+})();
+</script>
+
+</body>
+</html>

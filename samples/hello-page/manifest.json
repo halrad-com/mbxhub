@@ -1,0 +1,17 @@
+{
+  "id": "com.halrad.samples.hello-page",
+  "schemaVersion": 2,
+  "kind": "page",
+  "label": "Hello Page",
+  "publisher": "HALRAD LLC (sample)",
+  "version": "0.1.0",
+  "icon": "🖼",
+  "display": "both",
+  "expand": [
+    {
+      "label": "Hello Page",
+      "action": "webapp /pages/hello-page.html",
+      "display": "both"
+    }
+  ]
+}
