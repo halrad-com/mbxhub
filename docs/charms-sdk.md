@@ -46,7 +46,7 @@ The tests that keep them apart: if it changes what evidence can be gathered abou
 | `node` | an entry in MusicBee’s navigator; selecting it opens the charm’s tab | named only |
 | `tab` | a MusicBee tab, per-charm opt-in | named only |
 | `window` | a desktop window of its own, when the MBXHub Shell is running | named only |
-| `overlay` | a surface inside an overlay page | named only |
+| `overlay` | a surface inside an overlay page | **rendered as a button**: a charm declaring it with a `launch` target is a tile in the HUD's Services drawer, started by `POST /charms/{id}/launch`. Drawing *on* an overlay is still named only |
 | `hotkey` · `status` | a key chord; a background-task status line | named only |
 
 **Named only means nothing draws them.** The values exist so the axis is closed and a manifest can declare one today; three of them are rendered by a surface in this build and the rest are not. A `window` placement is not the same thing as the Shell pop-out described under the Surfaces section below, which exists and needs no placement.
@@ -346,6 +346,30 @@ It is raised only for a charm whose tier is `pinned` or `unsigned` — a signed-
 **A registration is not on a surface until a person approves it.** Announcing yourself puts a manifest in the folder the charm surfaces read, so without this rule registering would put a button on somebody’s bar that nobody said yes to. A registration that is *pending* or *revoked* is therefore not rendered — not on the dashboard bar, not on the Charm Bar rail, not as a window — while the record itself is untouched and still listed in the Charm Manager, which is where a person sees what is waiting on them. A manifest carrying no registration block at all renders as it always did; absence means *not a registration*, never *pending*. **Approval takes effect without a restart:** the surfaces re-read the folder when the registry says something was written, so approving or revoking reaches the screen on the next render.
 
 **A framed charm’s page is not isolated from the page that frames it, and that is a convention rather than a boundary.** A charm rendered inside one of our pages is loaded in an ordinary un-sandboxed frame: what stops it reaching a privileged action is the host page’s fixed list of open verbs — a host page performs only those for a page it frames, and anything else is refused with one log line naming the verb — not the browser. That is honest for the pages we ship and for a page somebody with access to the machine dropped into their own charms folder, but it is **not** a boundary we can offer for a page we did not author. Treat the frame as a rendering arrangement between parties who already trust each other, and read the enforcement section for the boundary that is real: the dispatch check, which no page can talk its way past, because no page holds a ticket.
+
+### A charm can be a button in the HUD
+
+A charm that declares a `launch` target **and** claims the `overlay` placement is drawn as a tile in
+the HUD's Services drawer. Pressing it starts what the manifest declares, under the same launch
+policy as the Tools menu — the deny-list, the operator's allow-list, and the observed-image gate all
+still decide.
+
+```
+GET  /charms/services      → { "local": true, "services": [ { "id", "label", "icon", "launchKind" } ] }
+POST /charms/{id}/launch   → 200, or a named refusal
+```
+
+`launchKind` is `scheme` or `exe`, which is all a button needs; **your launch target is never
+returned**, because it is the operator's to read on the approval row. The press is **local-only**, so
+off-loopback the list answers empty with `local: false` rather than drawing tiles that cannot work.
+The launch route takes **no target parameter** — the same structural binding that keeps *what was
+approved* and *what starts* from coming apart.
+
+Declaring the placement is how you **ask** for that surface. Without the condition, every Tools-menu
+launch charm would appear in the HUD as a side effect of existing.
+
+Refusals: `403 NOT_LOCAL`, `404 NOT_FOUND`, `403 LAUNCH_REFUSED` carrying the policy's own reason,
+and `409 LAUNCH_NOT_STARTED` when the plan was allowed and the process did not start.
 
 ### The `menu` placement
 

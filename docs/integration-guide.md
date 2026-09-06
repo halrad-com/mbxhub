@@ -182,9 +182,22 @@ place, or in its own tab if you asked for `standalone`. The Shell's **Charm Bar*
 to the edge of the screen — draws the same charms, and a click there opens your charm as a desktop
 window. Both surfaces update the moment a person approves or revokes you.
 
-A `menu` entry, under **Tools → MBXHub**, is the extra door: it costs a MusicBee restart to appear,
-and today it is the **only** door that runs a `launch` target. If what you want is a person starting
-your program from the Charm Bar, that is not built yet — ask for it rather than designing around it.
+A `menu` entry, under **Tools → MBXHub**, is the extra door: it costs a MusicBee restart to appear.
+
+**And the HUD can start your program.** Declare `placement: "overlay"` alongside a `launch` target and
+you are drawn as a tile in the HUD's Services drawer; pressing it starts what your manifest declares,
+under the same policy as the menu. Two routes back it:
+
+```
+GET  /charms/services      → { "local": true, "services": [ { "id", "label", "icon", "launchKind" } ] }
+POST /charms/{id}/launch   → 200, or a named refusal
+```
+
+`launchKind` is `scheme` or `exe` — enough to render a button — and **your launch target is never
+returned**; that is the operator's to read on the approval row. The press is **local-only**, so
+off-loopback the list comes back empty rather than drawing tiles that cannot work. Declaring the
+placement is how you *ask* for that surface: without it, a launch charm stays on the Tools menu where
+its author put it.
 
 ---
 
