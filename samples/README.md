@@ -2,9 +2,10 @@
 
 Small, self-contained examples that build on the public MBXHub API. Each folder stands alone — see its own `README.md` / `PROMPT.md` for setup and usage.
 
-**Start with `hello-charm`.** The three `hello-*` samples are the charms SDK end to end: one per
-`kind`, which is the field that decides how MBXHub reaches you. Everything else in the contract —
-the manifest, registration, approval, the ticket, the capability gate — is the same for all three.
+**Read [the integration guide](../docs/integration-guide.md) first**, then run the sample that
+matches your shape. The three `hello-*` samples are one per `kind` — the field that decides how
+MBXHub reaches you. Everything else in the contract — the manifest, registration, approval, the
+ticket, the capability gate — is the same for all three.
 
 | Sample | Language | What it shows |
 | --- | --- | --- |

@@ -54,7 +54,9 @@ Project site: **mbxhub.com**
 
 ## Samples & Extensions
 
-Working examples live in [`samples/`](samples/) — a browser control, a [Lyrion Music Server](https://lyrion.org/) plugin, an MCP server, and prompt recipes. Each one talks to MBXHub over its public REST / WebSocket API and stands on its own; none need the hub's source.
+**Writing an extension?** Start with the **[integration guide](docs/integration-guide.md)** — how the pieces fit, which shape your application should be, and the whole path walked end to end. The REST reference answers *what*; the guide answers *how*.
+
+Working examples live in [`samples/`](samples/): three `hello-*` charms, one per kind — a page, a program on the machine, and a service somewhere else — plus a browser control, a [Lyrion Music Server](https://lyrion.org/) plugin, an MCP server, and prompt recipes. Each one talks to MBXHub over its public REST / WebSocket API and stands on its own; none need the hub's source.
 
 ---
 
