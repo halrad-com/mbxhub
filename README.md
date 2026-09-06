@@ -36,7 +36,7 @@ Once the plugin is installed in MusicBee:
 2. **Open network access** so phones and other devices can reach it — **Tools → MBXHub → Settings → Firewall** (Step 4 of the [install guide](https://mbxhub.com/docs.html#installation)). This also confirms the **port** MBXHub is using.
 3. **Connect other devices** — scan the **QR code** on the dashboard, once the firewall is open.
 
-MBXHub uses **port 8080** by default, falling back to `8081` if that's taken. You can set it to **80** or any other port you like. The current port is shown in **MBXHub Settings** (Tools → MBXHub → Settings, or Preferences → Plugins → Configure).
+MBXHub uses **port 8080** by default. Ports are claimed as an **even pair** — the REST API on the even port, the Shell's own listener on the odd one above it — so a first run that finds 8080/8081 taken steps to `8082/8083`, and so on up to `8098/8099`. Port 80 is never picked automatically: it needs a URL-ACL reservation, so set it by hand for intentional production use. You can set it to **80** or any other port you like. The current port is shown in **MBXHub Settings** (Tools → MBXHub → Settings, or Preferences → Plugins → Configure).
 
 ### Live docs
 

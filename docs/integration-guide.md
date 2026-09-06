@@ -73,6 +73,26 @@ GET /ping  →  {"success":true,"data":{"status":"ok","service":"MBXHub","apiVer
 `service` must be `"MBXHub"`. Something else answering on 8080 is not the hub, and registering with
 it is how you leak a manifest to a stranger. Remember the port; do not probe again.
 
+**There is no separate local channel.** No named pipe, no COM object, no shared memory — the
+loopback HTTP API *is* the IPC. That is why a program on the MusicBee machine and a phone across
+the room speak the same protocol, and why the only privilege boundary that matters is *where the
+call came from* rather than which door it used.
+
+**8080 is a default, not a guarantee.** Ports are claimed as an **even pair** — REST on the even
+port, the Shell's own listener on the odd one above — so a machine whose 8080/8081 was taken is on
+8082, and a second MusicBee instance is elsewhere again. Four ways to find it, best first:
+
+| | How | Works when |
+|---|---|---|
+| 1 | **SSDP / mDNS / WS-Discovery** — `modelName: MBXHub`, a stable UUID, `presentationUrl` | the only one that works **off the machine**, and the only one that enumerates several instances by name |
+| 2 | **The http.sys registration table** — which application owns the port | same machine, authoritative, works with discovery switched off. `netstat` cannot answer this: every `HttpListener` port reports as `System` |
+| 3 | **The config file** — `mbxhub.json`, top-level `restPort` | the only one that answers **while the hub is stopped**. It also carries `restEnabled`, `requireBasicAuth` and `allowRemoteConnections`, which turns "not reachable" into a diagnosis |
+| 4 | **Ladder probe** — even ports 8080, 8082 … 8098, `GET /ping`, `service: "MBXHub"` in the body | last resort; needs no file or API access. A port being open proves nothing — only the identity in the body is evidence |
+
+Walking the ladder is not a remote-only technique and not a local-only one: it is simply the tier
+that needs the least. If you are on the machine, prefer 3 and 2 — you can read a file and ask the
+kernel. If you are not, you have 1 and 4.
+
 ### 2. Announce yourself
 
 ```
