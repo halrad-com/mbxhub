@@ -179,7 +179,7 @@ The consequence for identification is sharper than it first looks:
 > whose *content* you can inspect — a body you can parse and check — never on "it did not reject me".
 
 This is the same rule that governs writing to these devices (see the
-[WiiM HTTP API reference](wiim-http-api-reference.md)): success is read-back, never the acknowledgement.
+[WiiM HTTP API reference](wiim-samples/wiim-http-api-reference.md)): success is read-back, never the acknowledgement.
 
 ---
 
@@ -276,8 +276,8 @@ it was reached:
 
 ## See also
 
-- [Fosi Audio S3 field notes](fosi-s3-field-notes.md) — where the StreamSDK fingerprints and the
+- [Fosi Audio S3 field notes](fosi-samples/fosi-s3-field-notes.md) — where the StreamSDK fingerprints and the
   LinkPlay-vs-StreamSDK contrast table were measured
-- [WiiM HTTP API reference](wiim-http-api-reference.md) — the false-OK ladder in full
-- [Devialet Phantom field notes](devialet-phantom-field-notes.md) — the `ipcontrol/v1` surface
+- [WiiM HTTP API reference](wiim-samples/wiim-http-api-reference.md) — the false-OK ladder in full
+- [Devialet Phantom field notes](devialet-samples/devialet-phantom-field-notes.md) — the `ipcontrol/v1` surface
 - [First-contact probe kit](fosi-samples/) — the read-only recon sweep these fingerprints came from

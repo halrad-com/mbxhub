@@ -100,7 +100,7 @@ way for the wrong reason, and only the follow-up read tells you which.
 | 22, 23, 5000, 8080, 8888, 1400, 49152-49155 | closed | — |
 
 `http(s)://<ip>/httpapi.asp?command=getStatusEx` → **HTTP 404** on both schemes. No LinkPlay
-command surface exists on this device; [wiim-http-api-reference.md](wiim-http-api-reference.md)
+command surface exists on this device; [wiim-http-api-reference.md](../wiim-samples/wiim-http-api-reference.md)
 does not apply to it at all.
 
 ---
@@ -637,7 +637,7 @@ but with far more headroom and none of the reverse-engineering cost.
    already allows private-IP HTTP targets. The https work done for the WiiM is not required here.
 6. **Volume is already 1-step** over the API, so the "±5 in the app" complaint from the
    community log is an app limitation the charm simply does not inherit — a free win of the
-   same shape as the [Windows volume steps](windows-volume-steps.md) note.
+   same shape as the [Windows volume steps](../windows-volume-steps.md) note.
 
 ---
 
@@ -713,7 +713,7 @@ here that can brick the unit.
 
 ## 9. Day one on the bench — the read-only ladder
 
-The scripted sweep beside this note in [`fosi-samples/`](fosi-samples/) produced §1 and §4:
+The scripted sweep beside this note, [`fosi-probe.ps1`](fosi-probe.ps1), produced §1 and §4:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File fosi-probe.ps1 -Ip <address>
@@ -768,4 +768,4 @@ Measured facts above come from the device itself. Background and superseded clai
 - **Prior art on the same API:** [aioharmanluxury](https://github.com/sbesh91/aioharmanluxury) (MIT) — the client behind Home Assistant's [Harman Luxury Audio](https://www.home-assistant.io/integrations/harman_luxury) integration (Arcam Radia ST5/ST60, JBL, Mark Levinson — StreamSDK devices). Independently confirms the transport verb shape (`activate player:player/control {"control":…}`), volume/mute paths, and adds: `powermanager:target` **rejects writes** (power is read-only), identity at `settings:/system/serialNumber|modelName|primaryMacAddress`; Harman units are HTTPS/self-signed with volume max 99 where the S3 is plain HTTP / 100.
 - Rygel / GUPnP — the UPnP MediaRenderer implementation this firmware uses
 - Bluetooth SIG — Auracast / LE Audio Broadcast Audio Profile (BAP)
-- [wiim-http-api-reference.md](wiim-http-api-reference.md) — the LinkPlay contrast case; **does not apply to this device**
+- [wiim-http-api-reference.md](../wiim-samples/wiim-http-api-reference.md) — the LinkPlay contrast case; **does not apply to this device**

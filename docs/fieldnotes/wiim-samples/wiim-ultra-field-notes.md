@@ -162,7 +162,7 @@ NTP keeps the internal clock right, in the wrong zone.
 
 ## Watching it live
 
-See [`wiim-samples/`](wiim-samples/) — a dependency-free PowerShell
+See [`wiim-bench.ps1`](wiim-bench.ps1) beside this note — a dependency-free PowerShell
 watcher that polls the two workhorse commands and renders a self-refreshing local HTML
 "bench truth" page: player state, decoded track, volume, clock-drift verdict (catches NTP
 reverts at a glance), cast flag, BLE remote battery.

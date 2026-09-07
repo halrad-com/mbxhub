@@ -44,7 +44,7 @@ two stock LinkPlay devices (a WiiM Ultra and a WiiM Sound Lite, identical result
 That profile becomes a yardstick. A device that serves plain HTTP on port 80 and has 8819 closed is
 running something other than stock LinkPlay firmware, whatever its module lineage — and that single
 observation redirects the entire integration effort. See
-[the Fosi S3 field note](../fosi-s3-field-notes.md) for how that reasoning is being used.
+[the Fosi S3 field note](fosi-s3-field-notes.md) for how that reasoning is being used.
 
 ## Notes
 

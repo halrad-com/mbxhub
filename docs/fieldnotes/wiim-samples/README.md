@@ -10,7 +10,7 @@ page with the real state — no vendor app, no cloud, no install.
   (hex-encoded metadata decoded), position, playlist slot
 - **Clock truth** — the device clock compared against your PC in both local and UTC, with
   a verdict line (`LOCAL (correct)` / `UTC (NTP reverted!)`) so timezone drift is visible
-  at a glance — see the [WiiM field notes](../../docs/fieldnotes/wiim-ultra-field-notes.md)
+  at a glance — see the [WiiM field notes](wiim-ultra-field-notes.md)
   for why that matters
 - **Device** — firmware, network, internet reach, UPnP version
 - **Flags & remote** — Chromecast enable state, BLE remote battery/RSSI, preset count

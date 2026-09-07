@@ -5,7 +5,7 @@
 
 .DESCRIPTION
     Answers, in one run, the questions in the "bench agenda" of the field note
-    beside it (../fosi-s3-field-notes.md):
+    beside it (fosi-s3-field-notes.md):
 
       0. Is it on the network, and what does SSDP say it is?
       1. Which TCP ports answer?
