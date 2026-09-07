@@ -1,8 +1,10 @@
-# What each sample needs before it will build or run.
+# What each sample needs, and the command that builds it.
 #
-# Ten folders, four toolchains, and five of them have no build at all. Nothing
-# here installs anything - this is the answer to "why won't this one build",
-# read before you spend twenty minutes on it.
+# Ten folders, four toolchains, and five with no build at all. Nothing here
+# installs anything - this is the answer to "why won't this one build", read
+# before you spend twenty minutes on it, and the command to run once it will.
+#
+# Every command below is written to run FROM THIS DIRECTORY (samples/).
 #
 # EVERY sample that talks to the hub needs a RUNNING MBXHub, which is MusicBee
 # with the plugin loaded. The hub is not a package you install for a sample; it
@@ -10,62 +12,80 @@
 # ports are claimed as an even pair, so a machine whose 8080 was taken is on
 # 8082 - see MBXHUB-SDK/integration-guide.md, "Find the hub".
 #
-# Versions below are what the sample declares or was built against. Where a
-# range is written it is the sample's own floor, not a guess.
+# Versions are what the sample DECLARES or was built against. A range is the
+# sample's own floor, not a guess.
 
 
-# ---------------------------------------------------------------- .NET ------
-# dotnet build <sample>/<sample>.csproj -c Release
-#
-# .NET SDK 8.0 or newer.
+# ================================================================ .NET =======
+# .NET SDK 8.0 or newer. NuGet restore happens as part of the build.
 
 hello-app            net8.0-windows
-                     Microsoft.Web.WebView2  1.0.4078.44   (NuGet, restored on build)
-                     WINDOWS ONLY - the -windows target and WebView2 are not
-                     portable. The other two .NET samples are.
+                     Microsoft.Web.WebView2  1.0.4078.44
+                     WINDOWS ONLY - the -windows target and WebView2 do not
+                     travel. The other two .NET samples do.
+  BUILD              dotnet build hello-app/hello-app.csproj -c Release
+  RUN                dotnet run --project hello-app/hello-app.csproj
 
 hello-charm          net8.0
+  BUILD              dotnet build hello-charm/hello-charm.csproj -c Release
+  RUN                dotnet run --project hello-charm/hello-charm.csproj
+
 hello-endpoint       net8.0
+  BUILD              dotnet build hello-endpoint/hello-endpoint.csproj -c Release
+  RUN                dotnet run --project hello-endpoint/hello-endpoint.csproj
 
 
-# ---------------------------------------------------------------- C++ -------
-# samples/hello-spout/build.cmd
+# ================================================================ C++ ========
+# Visual Studio 2022 with the "Desktop development with C++" workload, which
+# supplies both the MSVC toolset and the CMake the script uses. build.cmd finds
+# it through vswhere - no PATH setup, no Developer Prompt.
 #
-# Visual Studio 2022 with the "Desktop development with C++" workload, which is
-# what supplies both the MSVC toolset and the CMake the script uses. The script
-# finds it through vswhere; no PATH setup needed.
-#
-# THE SIBLING CHECKOUT IS A BUILD DEPENDENCY, not an optional extra. The sample
-# takes the Spout2 SDK sources and mbxspout.h from ../../../mbxspout, so that
-# repository must be cloned beside this one:
+# THE SIBLING CHECKOUT IS A BUILD DEPENDENCY, not an optional extra: the Spout2
+# SDK sources and mbxspout.h come from ../../../mbxspout, so it must be cloned
+# beside this repository -
 #
 #     source/repos/mbxhub/          <- you are here
 #     source/repos/mbxspout/        <- must exist
 #
 # AT RUNTIME it loads mbxspout.dll, looked for beside the exe first and then in
-# the sibling checkout's build\Release. Build that DLL in mbxspout, copy it
-# beside the sample exe, or pass --dll <path>.
+# the sibling checkout's build\Release.
+#
+# build.cmd is also the WORKED EXAMPLE of wrapping a toolchain: discover it,
+# fail with a named reason when it is absent, and put the output somewhere
+# predictable. The .NET samples need no wrapper because dotnet already is one.
 
 hello-spout          Visual Studio 2022  (Desktop development with C++)
                      CMake               (bundled with that workload)
-                     mbxspout            sibling checkout, sources + header
+                     mbxspout            sibling checkout - sources + header
                      mbxspout.dll        at runtime
+  BUILD              hello-spout\build.cmd
+  RUN (two windows)  hello-spout\build\Release\hello-spout.exe --send
+                     hello-spout\build\Release\hello-spout.exe --dll <path>
 
 
-# ---------------------------------------------------------------- Node ------
-# cd samples/mcp && npm ci   (or npm install without a lockfile)
+# ================================================================ Node =======
 
 mcp                  node                >=22.18   (declared in package.json)
                      @modelcontextprotocol/sdk  ^1.0.0
+  BUILD              cd mcp && npm ci          (npm install without a lockfile)
+  RUN                cd mcp && npm start
 
 
-# ------------------------------------------------- nothing to build ---------
-# Listed so a reader counting folders does not wonder whether they were
-# forgotten. These are pages, prompts and configuration: open them, read them,
-# or hand them to an agent. No toolchain, no build step, and none is planned.
+# ==================================================== nothing to build =======
+# Named rather than omitted, so a reader counting folders does not wonder
+# whether they were forgotten. Pages, prompts and configuration: open them,
+# read them, or hand them to an agent. No toolchain, no build step, none
+# planned.
 
 dynaport             none - a page
 hello-page           none - a page
 library-tree         none - a page
 lms-dstm             none - a prompt recipe (targets Lyrion Music Server)
 playlist-charm       none - a prompt recipe
+
+
+# ===================================================== not a build script ====
+# There is deliberately no build-all here. It would have to guess at toolchains
+# it cannot install, and a script that prints green on a machine missing MSVC is
+# worse than a file that says MSVC is required. If one is ever written, a
+# missing toolchain must be a NAMED SKIP and never a pass.
