@@ -3,8 +3,8 @@
 :: Output: %~dp0build\Release\hello-spout.exe (+ manifest.json copied beside it)
 ::
 :: hello-spout loads mbxspout.dll at runtime. If one is not sitting beside the exe it falls
-:: back to ..\..\build\Release\mbxspout.dll - this repo's own build output - so run the
-:: repo-root build.cmd first, or pass --dll <path>.
+:: back to the sibling mbxspout checkout's build\Release\mbxspout.dll. Build that DLL
+:: in mbxspout first, place it beside the sample exe, or pass --dll <path>.
 setlocal
 set VSROOT=C:\Program Files\Microsoft Visual Studio\2022\Enterprise
 :: %ProgramFiles(x86)% cannot appear inside a parenthesised block (the ')' ends the block), so resolve it first.

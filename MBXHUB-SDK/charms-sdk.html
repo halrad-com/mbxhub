@@ -1,0 +1,852 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Charms SDK — MBXHub</title>
+<!-- Generated from MBXHUB-SDK/charms-sdk.md by build-charms-sdk.ps1. Do not edit. -->
+<style>
+:root { color-scheme: light dark; font: 17px/1.65 system-ui, sans-serif; }
+body { margin: 0 auto; max-width: 76rem; padding: 2rem clamp(1rem,4vw,4rem); }
+main { min-width: 0; } h1,h2,h3 { line-height: 1.25; } h2 { margin-top: 2.5rem; }
+a { color: light-dark(#1559a6,#87beff); } p,li,td { overflow-wrap: anywhere; }
+pre { overflow: auto; padding: 1rem; background: light-dark(#f1f4f8,#202733); }
+code { font-size: .88em; } table { border-collapse: collapse; display: block; overflow-x: auto; margin: 1.5rem 0; }
+td,th { border: 1px solid #8893a2; padding: .6rem .8rem; text-align: left; min-width: 8rem; }
+th { background: light-dark(#e9eef5,#202733); } blockquote { border-left: 3px solid #8893a2; margin-left: 0; padding-left: 1rem; }
+@media print { body { max-width: none; font-size: 11pt; } table { display: table; } pre { white-space: pre-wrap; } }
+</style>
+</head>
+<body><main>
+<h1 id="charms-sdk">Charms SDK</h1>
+<p>A <strong>charm</strong> is an extension of MBXHub. The ones that ship with it are pages we wrote; this document is how anyone writes one — how an application announces itself, what it may ask for, how a person grants it, and what MBXHub promises not to break. It is the companion to the <a href="https://mbxhub.com/api.html">REST API</a> and <a href="https://mbxhub.com/llms.txt">llms.txt</a>, and it describes the inspected source behavior; this does not assert that every feature has been live verified.</p>
+<p>Originally written against <strong>MBXHub 0.5.5.1</strong>. Reconciled on 2026-09-07 against implementation revision <code>325ed35839b3fd3f3732dde4969fb28284111182</code>. Your own hub serves the reference for the build you are actually
+talking to at <code>/docs</code>, and a terse machine-readable copy at <code>/llms.txt</code>.</p>
+<p><strong>New here? Read <a href="https://github.com/halrad-com/mbxhub/blob/main/MBXHUB-SDK/integration-guide.md">the integration guide</a> first</strong> — how the pieces fit and the
+whole path walked end to end — then come back here for the detail. Working code for all three kinds
+is in <a href="https://github.com/halrad-com/mbxhub/blob/main/samples/"><code>samples/</code></a>.</p>
+<h3 id="the-one-thing-guaranteed-regardless-of-everything-below">The one thing guaranteed regardless of everything below</h3>
+<p>The enumerated read endpoints and separately tested player verbs remain open to unregistered callers. Registration adds capabilities. Automation is subject to the explicit compatibility exception below; do not read this as permanence for every currently reachable route.</p>
+<h2 id="what-a-charm-is-three-separate-questions">What a charm is — three separate questions</h2>
+<p>Three axes, and none of them answers another:</p>
+<ul>
+<li><strong>What is this thing?</strong> Where its code lives, what evidence about it can exist, how events reach it, what “alive” means. That is the charm’s <strong>kind</strong>. One per charm.</li>
+<li><strong>Where does each entry appear?</strong> The charm rail, a desktop window, a MusicBee menu, a tab. That is the entry’s <strong>placement</strong>.</li>
+<li><strong>What does activating it do?</strong> Open a page, call an endpoint, send a command. That is the entry’s <strong>action</strong> — a verb with an argument.</li>
+</ul>
+<p>The tests that keep them apart: if it changes what evidence can be gathered about the code, it is the kind; if it answers where the entry appears, it is a placement; if it answers what happens when the entry is activated, it is an action. The verb set stays small and closed — adding a new door into MusicBee adds a placement value, never a verb.</p>
+<h3 id="kind-the-substrate">Kind — the substrate</h3>
+<table>
+<thead>
+<tr>
+<th><code>kind</code></th>
+<th>Where the code lives</th>
+<th>What evidence can exist</th>
+<th>Events reach it by</th>
+<th>“Alive” means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>page</code></td>
+<td>HTML/JS that MBXHub hosts and renders</td>
+<td>none of the executable kind — there is nothing to sign</td>
+<td>a message to the frame, or the page’s own WebSocket</td>
+<td>a window or frame is open</td>
+</tr>
+<tr>
+<td><code>proc</code></td>
+<td>a local executable on this machine</td>
+<td>the strongest available: the image on disk and its signature</td>
+<td>its own connection while it is up</td>
+<td>the process is running</td>
+</tr>
+<tr>
+<td><code>endpoint</code></td>
+<td>somewhere else that answers HTTP — another machine, a container, a service</td>
+<td>its address and reach; no local image</td>
+<td>MBXHub calls a URL the charm declared</td>
+<td>its URL answers</td>
+</tr>
+</tbody>
+</table>
+<p><strong>A manifest with no <code>kind</code> is a <code>page</code>.</strong> Every charm that ships today is a page, so the default is the truth rather than a convenience. An unknown <code>kind</code> is carried verbatim rather than coerced, so nothing is ever described as something it is not.</p>
+<p><strong>A background process can register without action entries, but that does not hide it.</strong> Every charm still resolves to <code>rail</code> (or <code>rail-menu</code> through <code>display: action-menu</code>). An absent <code>placement</code> is a default, not a no-surface declaration. A manifest-level way to suppress every hub surface is not implemented.</p>
+<h3 id="placements-where-an-entry-appears">Placements — where an entry appears</h3>
+<!-- sdk:placements:start -->
+<table>
+<thead>
+<tr>
+<th>Placement</th>
+<th>Support in the inspected source</th>
+<th>Restart for MusicBee registration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rail</code></td>
+<td>Rendered; default charm placement</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>rail-menu</code></td>
+<td>Rendered; charm-level <code>display: action-menu</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>menu</code></td>
+<td>Tools → MBXHub; click re-reads eligibility and delivers by kind</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>overlay</code></td>
+<td>HUD launch button only; requires a <code>launch</code> target</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>window</code></td>
+<td>Named; placement-driven rendering not implemented. Shell pop-out is separate</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>node</code> / <code>tab</code></td>
+<td>Named; no MusicBee surface implemented</td>
+<td>Listed in <code>restartRequired</code>; a restart does not implement them</td>
+</tr>
+<tr>
+<td><code>hotkey</code> / <code>status</code></td>
+<td>Named; no MusicBee surface implemented</td>
+<td>Listed in <code>restartRequired</code>; a restart does not implement them</td>
+</tr>
+</tbody>
+</table>
+<!-- sdk:placements:end -->
+<p><strong>Named values are not necessarily implemented surfaces.</strong> A <code>window</code> placement does not create a window; the existing Shell pop-out is a separate feature. <code>restartRequired</code> reports declared MusicBee-hosted placements, including named values that have no implementation; it is not a support-discovery response.</p>
+<p><strong>The <code>placement</code> field is read.</strong> An entry that declares none takes the charm’s own placement, and that is <code>rail-menu</code> when the charm’s <code>display</code> is <code>action-menu</code> and <code>rail</code> otherwise — which is why every shipping manifest loads unchanged. Placements are compared case-insensitively, like every other manifest word, and are <strong>never coerced</strong>: a value this build does not know comes back verbatim and is skipped by whatever reads it, rather than being drawn somewhere else. A placement MusicBee hosts is handed to MusicBee when the plugin loads, so one requested while MusicBee is running appears at the next start — which is what <code>restartRequired</code> says on the registration response.</p>
+<h3 id="actions-what-activating-an-entry-does">Actions — what activating an entry does</h3>
+<table>
+<thead>
+<tr>
+<th>Verb</th>
+<th>Argument</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>webapp</code></td>
+<td>a path</td>
+<td>open this page</td>
+</tr>
+<tr>
+<td><code>iframe-cmd</code></td>
+<td>a command</td>
+<td>send this command to the page already open</td>
+</tr>
+<tr>
+<td><code>post</code></td>
+<td>a hub path</td>
+<td>call this MBXHub endpoint</td>
+</tr>
+<tr>
+<td><code>http…</code> (bare URL)</td>
+<td>a LAN address</td>
+<td>call this device directly, through MBXHub’s LAN proxy</td>
+</tr>
+<tr>
+<td><code>launch</code></td>
+<td><strong>none</strong> — the verb is bare</td>
+<td>start the program the manifest’s top-level <code>launch</code> field names, under the launch policy below</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>launch</code> takes no target, and writing one is refused.</strong> An <code>expand[]</code> entry whose action is <code>launch thing.exe</code> is answered <code>400 INVALID_ACTION</code> at registration, naming the entry, before anything is written. What starts is the manifest’s top-level <code>launch</code> field — the exact string on the Charm Manager’s approval detail — so the thing that was approved and the thing that starts cannot come apart. The verb is matched on the first token, case-insensitively, so a later verb spelled <code>launcher</code> is a different one and is untouched.</p>
+<p><strong>An entry whose verb this build does not know is skipped, and the rest of the charm works.</strong> The dispatcher matches known prefixes and lets anything else fall through without error — so one manifest can target several builds: ship a new verb <em>and</em> a <code>webapp</code> fallback entry and both are satisfied from one file.</p>
+<p><strong>The <code>action-menu</code> rail mode takes one verb, and only one.</strong> Its items dispatch <code>post &lt;path&gt;</code> — the path is POSTed to this hub with an empty body. A bare path carrying no verb is still honored, with a deprecation warning in the client log. Anything else — <code>webapp</code>, <code>iframe-cmd</code>, an <code>http://</code> URL — is ignored with a warning by an <code>action-menu</code> item; those verbs belong on the charm button and on <code>expand[]</code> entries rendered as a button row.</p>
+<h2 id="the-manifest">The manifest</h2>
+<p>A charm is a JSON file. Almost every shipping charm is exactly this shape:</p>
+<pre><code>{
+  &quot;id&quot;: &quot;mixer&quot;,
+  &quot;label&quot;: &quot;Mixer&quot;,
+  &quot;expand&quot;: [
+    { &quot;icon&quot;: &quot;&lt;svg …&gt;&quot;, &quot;label&quot;: &quot;Mixer&quot;,     &quot;action&quot;: &quot;webapp /pages/mixer.html&quot;, &quot;display&quot;: &quot;both&quot; },
+    { &quot;icon&quot;: &quot;+&quot;,       &quot;label&quot;: &quot;Volume Up&quot;, &quot;action&quot;: &quot;iframe-cmd volumeUp&quot;,      &quot;msg&quot;: &quot;Vol +&quot; }
+  ]
+}
+</code></pre>
+<p><strong>The documented field set</strong> — the loader reads all of these, whether or not every charm uses them:</p>
+<!-- sdk:fields:start -->
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Where</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>top level</td>
+<td>unique, stable, the charm’s identity</td>
+</tr>
+<tr>
+<td><code>kind</code></td>
+<td>top level</td>
+<td>the substrate. Parsed; absent means <code>page</code>, unknown is kept verbatim</td>
+</tr>
+<tr>
+<td><code>schemaVersion</code></td>
+<td>top level</td>
+<td>the manifest format’s version. Parsed; absent means 1</td>
+</tr>
+<tr>
+<td><code>label</code></td>
+<td>top level and per entry</td>
+<td>what a person sees</td>
+</tr>
+<tr>
+<td><code>expand[]</code></td>
+<td>top level</td>
+<td>the charm’s actions</td>
+</tr>
+<tr>
+<td><code>icon</code></td>
+<td>top level or per entry</td>
+<td>inline SVG, or a character — passed through the icon contract below</td>
+</tr>
+<tr>
+<td><code>action</code></td>
+<td>top level or per entry</td>
+<td>verb + argument</td>
+</tr>
+<tr>
+<td><code>display</code></td>
+<td>top level or per entry</td>
+<td>the rail sub-mode — see below</td>
+</tr>
+<tr>
+<td><code>msg</code></td>
+<td>top level or per entry</td>
+<td>short confirmation text after the action runs</td>
+</tr>
+<tr>
+<td><code>context</code></td>
+<td>top level</td>
+<td>free text for the charm’s own use; the loader carries it and does not interpret it</td>
+</tr>
+<tr>
+<td><code>publisher</code></td>
+<td>top level</td>
+<td>who you are, in your own words</td>
+</tr>
+<tr>
+<td><code>version</code></td>
+<td>top level</td>
+<td>your release</td>
+</tr>
+<tr>
+<td><code>scopes</code></td>
+<td>top level</td>
+<td>the capabilities you ask for. Parsed and recorded — asking is not being granted</td>
+</tr>
+<tr>
+<td><code>scopeReasons</code></td>
+<td>top level</td>
+<td>one sentence per scope, <strong>in your words</strong>, saying why you want it — an object keyed by scope name. Shown verbatim beside the capability’s own sentence on the approval row, and again on the runtime prompt labelled <em>They say:</em>. One line, at most 200 characters, trimmed, the same set of names as <code>scopes</code>. <strong>Required from <code>schemaVersion</code> 2</strong>; a manifest declaring 1, or nothing, may omit it</td>
+</tr>
+<tr>
+<td><code>endpoint</code></td>
+<td>top level</td>
+<td>where an <code>endpoint</code> charm answers — and where MBXHub POSTs its activations. Also the fallback route for a <code>proc</code> charm with no socket connected</td>
+</tr>
+<tr>
+<td><code>launch</code></td>
+<td>top level</td>
+<td>what to start for a <code>proc</code> charm — its own executable, or a URL scheme. Absent is normal: an application whose own launcher starts it is still a <code>proc</code>. Read by the <code>launch</code> verb, under the policy below</td>
+</tr>
+<tr>
+<td><code>registration</code></td>
+<td>top level</td>
+<td>the hub’s own record for a registered charm. Written by the hub, never by you</td>
+</tr>
+<tr>
+<td><code>placement</code></td>
+<td>per entry</td>
+<td>where the entry appears. Read; absent means the charm’s own placement, which is <code>rail</code> unless <code>display</code> is <code>action-menu</code>. There is no top-level <code>placement</code> field in this build — a charm’s own placement comes from its <code>display</code></td>
+</tr>
+<tr>
+<td><code>source</code></td>
+<td>per entry</td>
+<td>for a placement that shows pixels (<code>tab</code> / <code>window</code> / <code>overlay</code>): a path or a render source such as <code>spout:&lt;sender&gt;</code>. Parsed and carried; <strong>nothing in this build fills a surface from it</strong></td>
+</tr>
+</tbody>
+</table>
+<!-- sdk:fields:end -->
+<p>Top-level <code>icon</code> / <code>action</code> / <code>display</code> / <code>msg</code> are the single-action shorthand; <code>expand[]</code> is the list. A charm may use either.</p>
+<p><strong><code>display</code> — the rail sub-modes:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>both</code></td>
+<td>click opens in place; shift-click opens a new tab</td>
+</tr>
+<tr>
+<td><code>standalone</code></td>
+<td>always a new tab</td>
+</tr>
+<tr>
+<td><code>inline</code></td>
+<td>opens in place only</td>
+</tr>
+<tr>
+<td><code>action-menu</code></td>
+<td>one trigger, a menu of the <code>expand[]</code> entries — its items take one verb</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Unknown <code>display</code> values fall back to a plain button.</strong> That is a documented rule of the loader, not an accident.</p>
+<blockquote>
+<p><strong>The icon contract:</strong> an icon is either plain text or one inert <code>&lt;svg&gt;</code>. Text with no <code>&lt;</code> in it passes through; a single <code>&lt;svg&gt;</code> element carrying nothing that executes passes through; anything else is HTML-encoded, so it renders inert and visible rather than vanishing. You see the mistake instead of a blank button.</p>
+</blockquote>
+<h3 id="minimal-manifest-shapes">Minimal manifest shapes</h3>
+<p>These examples show manifest syntax; they do not install pages, start a service, or obtain approval. Use the <a href="https://github.com/halrad-com/mbxhub/blob/main/MBXHUB-SDK/integration-guide.md">integration walkthrough</a> and <a href="https://github.com/halrad-com/mbxhub/blob/main/samples/">working samples</a> for executable examples. Registration is local for every kind. Top-level <code>placement</code> is not supported; declare non-rail entries in <code>expand</code>.</p>
+<p><strong>Hosted page:</strong> place the page at the declared path. Absent entry placement inherits the rail.</p>
+<pre><code class="language-json">{&quot;id&quot;:&quot;com.example.page&quot;,&quot;schemaVersion&quot;:2,&quot;kind&quot;:&quot;page&quot;,&quot;label&quot;:&quot;Example page&quot;,&quot;publisher&quot;:&quot;Example&quot;,&quot;version&quot;:&quot;1.0&quot;,&quot;scopes&quot;:[],&quot;scopeReasons&quot;:{},&quot;expand&quot;:[{&quot;label&quot;:&quot;Open&quot;,&quot;action&quot;:&quot;webapp /pages/example.html&quot;,&quot;display&quot;:&quot;both&quot;}]}
+</code></pre>
+<p><strong>Background process:</strong> no launch action and no application window required. This registers successfully as a process shape, but it still has the hub's default rail placement; this is not an invisibility declaration.</p>
+<pre><code class="language-json">{&quot;id&quot;:&quot;com.example.worker&quot;,&quot;schemaVersion&quot;:2,&quot;kind&quot;:&quot;proc&quot;,&quot;label&quot;:&quot;Worker&quot;,&quot;publisher&quot;:&quot;Example&quot;,&quot;version&quot;:&quot;1.0&quot;,&quot;scopes&quot;:[],&quot;scopeReasons&quot;:{},&quot;expand&quot;:[]}
+</code></pre>
+<p><strong>Menu-launched process:</strong> replace the path with the executable making the registration request. The bare <code>launch</code> action reads the top-level target.</p>
+<pre><code class="language-json">{&quot;id&quot;:&quot;com.example.app&quot;,&quot;schemaVersion&quot;:2,&quot;kind&quot;:&quot;proc&quot;,&quot;label&quot;:&quot;Example app&quot;,&quot;publisher&quot;:&quot;Example&quot;,&quot;version&quot;:&quot;1.0&quot;,&quot;scopes&quot;:[],&quot;scopeReasons&quot;:{},&quot;launch&quot;:&quot;C:\\Example\\App.exe&quot;,&quot;expand&quot;:[{&quot;label&quot;:&quot;Open&quot;,&quot;placement&quot;:&quot;menu&quot;,&quot;action&quot;:&quot;launch&quot;}]}
+</code></pre>
+<p><strong>Endpoint:</strong> a local registrar announces this service's private address. A menu click delivers the activation to its endpoint; the remote service cannot use the local ticket from its own machine. The blank action adds no launch operation.</p>
+<pre><code class="language-json">{&quot;id&quot;:&quot;com.example.service&quot;,&quot;schemaVersion&quot;:2,&quot;kind&quot;:&quot;endpoint&quot;,&quot;label&quot;:&quot;Example service&quot;,&quot;publisher&quot;:&quot;Example&quot;,&quot;version&quot;:&quot;1.0&quot;,&quot;scopes&quot;:[],&quot;scopeReasons&quot;:{},&quot;endpoint&quot;:&quot;http://192.168.1.50:9000/activated&quot;,&quot;expand&quot;:[{&quot;label&quot;:&quot;Activate&quot;,&quot;placement&quot;:&quot;menu&quot;,&quot;action&quot;:&quot;&quot;}]}
+</code></pre>
+<p><strong>HUD launch tile:</strong> this is a locally installed scheme-launch manifest. The scheme handler must exist and pass launch policy. No registration block means file-installed provenance; if registered instead, it must be approved.</p>
+<pre><code class="language-json">{&quot;id&quot;:&quot;com.example.hud&quot;,&quot;schemaVersion&quot;:2,&quot;kind&quot;:&quot;proc&quot;,&quot;label&quot;:&quot;Example HUD app&quot;,&quot;publisher&quot;:&quot;Example&quot;,&quot;version&quot;:&quot;1.0&quot;,&quot;scopes&quot;:[],&quot;scopeReasons&quot;:{},&quot;launch&quot;:&quot;steam://run/4813240&quot;,&quot;expand&quot;:[{&quot;label&quot;:&quot;Start&quot;,&quot;placement&quot;:&quot;overlay&quot;,&quot;action&quot;:&quot;launch&quot;}]}
+</code></pre>
+<h2 id="what-is-promised-and-what-is-merely-true">What is promised, and what is merely true</h2>
+<h3 id="the-one-commitment">The one commitment</h3>
+<p><strong>The endpoints an integration reads stay open to callers that do not register, permanently.</strong> They are frozen in our test suite and re-checked on every run:</p>
+<p><code>/ping</code> · <code>/system/uptime</code> · <code>/system/status</code> · <code>/nowplaying</code> · <code>/queue/current</code> · <code>/player/shuffle</code> · <code>/player/repeat</code> · <code>/playlists</code> · <code>/playlists/{url}/files</code> · <code>/library/file/{url}</code></p>
+<p>— together with the player verbs, frozen in a suite of their own. If your integration reads something not on that list, tell us and it goes on it. A promise nobody tests is a hope.</p>
+<p><strong>What the commitment does not cover, said out loud.</strong> The <strong>automation</strong> surface — input simulation, wake, library scan — is governed today by a single switch the person at the console controls, not by registration, and some of those routes answer to GET as well as POST. If any of that ever moves behind a granted capability, or a side-effecting GET form is retired, that is a break: it arrives with an <code>apiVersion</code> change and notice, never silently.</p>
+<h3 id="the-rest-is-loader-behavior-not-a-promise">The rest is loader behavior, not a promise</h3>
+<p>These are properties we like and intend to keep. They are stated so you can rely on them knowingly, not offered as a contract:</p>
+<ul>
+<li>An unknown verb is skipped, never fatal.</li>
+<li>So one manifest can target several builds.</li>
+<li>Unknown <code>display</code> values fall back to a plain button.</li>
+<li>An absent <code>kind</code> is a <code>page</code>, and an unknown one is carried verbatim.</li>
+<li>An absent <code>schemaVersion</code> is a version 1 manifest — which is what every shipping charm is.</li>
+</ul>
+<p>The charm format has no outside consumers yet, and that has a consequence worth stating plainly rather than hiding behind reassuring language: <strong>the format is still free to change, and while that is true we intend to get it right rather than only get it compatible.</strong> If something here is wrong, now is when it costs nothing to say so.</p>
+<h2 id="registration-announcing-yourself">Registration — announcing yourself</h2>
+<p>An application announces itself — and <strong>a charm can also arrive as a file</strong>: the hub reads the manifests in its own charms folder when it starts, which is how the charms shipped with it get there, and a manifest dropped in beside them is read the same way. What <em>announcing</em> gets you that a file cannot is this section: a registration, an approval a person gave it, and the ticket that follows.</p>
+<p>Neither route has the hub going looking. <strong>MBXHub never scans your machine for applications.</strong> It does identify the process on the other end of your registration connection — its executable path and its signature — because that is what places a <code>proc</code> charm in a trust tier. This happens at registration, once, for a <code>proc</code> charm only; a <code>page</code> or <code>endpoint</code> charm is not observed, because there is no local process to observe. Nothing else is read, and nothing leaves the machine.</p>
+<h3 id="finding-the-hub-first">Finding the hub first</h3>
+<p>Walk the even ports of the ladder — 8080, 8082, and so on to 8098 — and treat a port as MBXHub only when <code>GET /ping</code> answers with <code>service: &quot;MBXHub&quot;</code>. A <code>200</code> from something else on a ladder port is somebody else’s server, not a quiet hub. Stop probing at the first port that answers that way. <code>service</code> is the only field to recognize us by — <code>apiVersion</code> tells you what you found, never that you found us.</p>
+<h3 id="announcing">Announcing</h3>
+<pre><code>POST /charms/register
+Content-Type: application/json
+
+{ &quot;id&quot;: &quot;com.example.thing&quot;, &quot;kind&quot;: &quot;proc&quot;, &quot;label&quot;: &quot;Thing&quot;, &quot;publisher&quot;: &quot;Example Ltd&quot;,
+  &quot;version&quot;: &quot;1.4.7&quot;, &quot;schemaVersion&quot;: 2,
+  &quot;scopes&quot;: [ &quot;playback:control&quot; ],
+  &quot;scopeReasons&quot;: { &quot;playback:control&quot;: &quot;to pause the music when a call comes in&quot; },
+  &quot;expand&quot;: [ … ] }
+
+→ 200 { &quot;charmId&quot;: &quot;…&quot;, &quot;status&quot;: &quot;pending&quot;, &quot;restartRequired&quot;: [], &quot;apiVersion&quot;: &quot;1&quot; }
+</code></pre>
+<ul>
+<li><strong>Idempotent for an unchanged manifest.</strong> Registering twice with the same <code>id</code> and the same content returns the same <code>charmId</code> and creates nothing new. An application that re-announces on every launch does not accumulate registrations.</li>
+<li><strong>A changed manifest is an update, and that is every release you ship.</strong> Same <code>id</code>, new <code>version</code>, new entries, a new scope: the manifest half of the record is replaced and the hub’s half survives untouched — the <code>charmId</code>, the time you first registered, the status the person set, and anything recorded against you. A <strong>newly requested</strong> scope is not granted by the update; it is asked for at the next opportunity. A scope you stop requesting is released — the granted set is intersected with what the manifest still asks for. Declines and bans are not pruned that way: a grant is released when you stop asking, but a no is not yours to withdraw by shipping a version that omits the scope.</li>
+<li><strong><code>pending</code> is not degraded.</strong> While a person has not yet approved you, every call you could make before registering behaves identically. Pending costs you nothing.</li>
+<li><strong><code>apiVersion</code> comes back on the first call</strong>, so you learn what you are talking to at the moment you introduce yourself. It comes back on a refusal too: a caller that cannot register still needs to know which contract just refused it.</li>
+<li><strong><code>restartRequired</code> lists what is registered but not yet on screen.</strong> Those are the placements MusicBee itself hosts — <code>menu</code>, <code>node</code>, <code>tab</code>, <code>hotkey</code>, <code>status</code> — which MusicBee is handed when the plugin loads, so they appear at its <strong>next start</strong> rather than now. It is on every <code>200</code>, <code>[]</code> included, and absent from a refusal, where nothing was registered. Names come back spelled as your manifest spelled them, deduplicated case-insensitively with the first spelling kept. <strong>It is not a diff:</strong> re-announcing the same entry still lists it, because the answer describes the MusicBee session that is answering, not what changed since last time. A placement nothing hosts — <code>rail</code>, <code>rail-menu</code>, <code>window</code>, <code>overlay</code>, or a value this build does not know — is not listed, because claiming it waits on MusicBee would be a promise that never comes true.</li>
+<li><strong>Registration is performed locally.</strong> <code>POST /charms/register</code> is accepted only from the machine MBXHub runs on. This is not a policy that might loosen: a hub that could be enrolled from across the network is a hub anyone on the network can enroll themselves into.</li>
+<li><strong>That is a rule about who announces you, not about where your code runs.</strong> An <code>endpoint</code> charm answers from somewhere else by definition, and registers through something local acting on its behalf — its installer, its launcher, or a small local agent. What it <em>declares</em> is the address MBXHub calls; what must be <em>local</em> is the announcement. An application with nothing local at all is not a registered charm; it is an unregistered caller — which keeps working, permanently.</li>
+<li><strong>An <code>id</code> is claimed when its registration is approved on that hub.</strong> A later registration of the same <code>id</code> from a different publisher identity is refused (<code>ID_CLAIMED</code>) rather than allowed to take it over, and the first record is unchanged. A <code>pending</code> id is not yet claimed, and a revoked one stays claimed. <em>(Releasing a claim from the Charm Manager is designed, not built — no verb does it yet.)</em></li>
+<li><strong>An <code>id</code> must be publisher-namespaced</strong>, and that is enforced: at least one dot, no path separators, no dot-segments, 128 characters at most, and letters, digits, <code>.</code>, <code>-</code> and <code>_</code> only. Choose a reverse-domain name you control and this never concerns you.</li>
+</ul>
+<h3 id="reading-your-record-back">Reading your record back</h3>
+<pre><code>GET /charms/com.example.thing
+
+→ 200 { &quot;id&quot;: &quot;com.example.thing&quot;, &quot;kind&quot;: &quot;proc&quot;, &quot;publisher&quot;: &quot;Example Ltd&quot;,
+        &quot;version&quot;: &quot;1.4.7&quot;, &quot;status&quot;: &quot;pending&quot;,
+        &quot;grantedScopes&quot;: [], &quot;requestedScopes&quot;: [ … ] }
+</code></pre>
+<p>It is ungated and read-only, because it reports a decision already made and changes nothing. <code>grantedScopes</code> is stated as empty rather than omitted, so you can tell <em>nothing granted</em> from <em>field missing</em>. <code>tier</code> is absent until something has computed one — an unknown tier is left unsaid rather than asserted. <strong>What is never returned is the hub’s private half of the record:</strong> the observed image path and its digest are not on this response under any name, and an id that was never registered is a <code>404</code> — the same answer an id that could never be valid gets.</p>
+<h3 id="how-a-registration-is-refused">How a registration is refused</h3>
+<p>A refusal is always a stated code, never a silent drop.</p>
+<!-- sdk:errors:start -->
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The caller is not on the machine MBXHub runs on</td>
+<td><code>403</code> <code>NOT_LOCAL</code> — checked first, ahead of everything below, so a remote caller is told this whatever it posted</td>
+</tr>
+<tr>
+<td><code>Content-Type</code> is not <code>application/json</code></td>
+<td><code>415</code> <code>UNSUPPORTED_MEDIA_TYPE</code> — parameters such as <code>; charset=utf-8</code> are fine; declaring nothing is not. This is what keeps a page the person happens to be visiting from registering on your behalf</td>
+</tr>
+<tr>
+<td>The install is in read-only mode</td>
+<td><code>403</code> <code>API_READ_ONLY</code> — the owner’s statement, made at the console, that this install is not to be changed, and registration writes a file</td>
+</tr>
+<tr>
+<td>A party is running, or the hub is in kiosk mode</td>
+<td><code>302</code> to the guest surface. These sit in front of the route rather than in it, so the answer is a redirect and not an error body. A local caller is exempt from the party redirect</td>
+</tr>
+<tr>
+<td>This hub already holds 500 registrations</td>
+<td><code>403</code> <code>REGISTRY_FULL</code> — the ceiling on distinct ids. An id <strong>already</strong> registered still updates at the ceiling, so a full hub cannot stop you shipping a new version</td>
+</tr>
+<tr>
+<td>The body is missing, is not a JSON object, or has no <code>id</code></td>
+<td><code>400</code> <code>INVALID_REQUEST</code></td>
+</tr>
+<tr>
+<td>The <code>id</code> is not publisher-namespaced (no dot)</td>
+<td><code>400</code> <code>INVALID_ID</code> — <code>com.example.thing</code>, never <code>thing</code></td>
+</tr>
+<tr>
+<td>The body is larger than 64 KB</td>
+<td><code>413</code> <code>REGISTER_TOO_LARGE</code> — a manifest is a page of JSON, not a payload</td>
+</tr>
+<tr>
+<td>A scope name this build does not know</td>
+<td><code>400</code> <code>UNKNOWN_SCOPE</code>, naming the scope — never silently dropped</td>
+</tr>
+<tr>
+<td>A <code>scopes</code> entry with no sentence in <code>scopeReasons</code>, or a blank one</td>
+<td><code>400</code> <code>SCOPE_RATIONALE_MISSING</code> — the offending scope is named and nothing is written. <strong>The one refusal the schema version gates:</strong> raised only for a manifest declaring <code>schemaVersion</code> 2 or higher, because a version-1 manifest predates the field. It pays for the silence on the approval row instead, where every capability it asks for reads <em>no reason given</em></td>
+</tr>
+<tr>
+<td>A sentence that is not one line, or is longer than 200 characters once trimmed</td>
+<td><code>400</code> <code>SCOPE_RATIONALE_INVALID</code> — the offending scope is named and nothing is written. Refused at <em>every</em> schema version: a sentence that cannot be shown on the one row it gets is not made showable by the version it arrived under</td>
+</tr>
+<tr>
+<td>A <code>scopeReasons</code> key naming a scope this manifest does not ask for</td>
+<td><code>400</code> <code>SCOPE_RATIONALE_UNKNOWN</code> — refused rather than dropped, for exactly <code>UNKNOWN_SCOPE</code>’s reason: you wrote words nobody would ever read, and you are here now to fix them. Refused at every schema version</td>
+</tr>
+<tr>
+<td>An <code>expand[]</code> entry writes a target after the <code>launch</code> verb — <code>&quot;action&quot;: &quot;launch thing.exe&quot;</code></td>
+<td><code>400</code> <code>INVALID_ACTION</code> — naming the entry. The verb is bare; the target belongs in the manifest’s top-level <code>launch</code> field, which is the string the person approves and the only one that is launched</td>
+</tr>
+<tr>
+<td>The <code>id</code> is claimed by another publisher</td>
+<td><code>409</code> <code>ID_CLAIMED</code> — the first record is unchanged</td>
+</tr>
+<tr>
+<td>The hub could not read its own registry (a scanner or indexer was holding the file, and one retry did not clear it)</td>
+<td><code>503</code> <code>REGISTRY_BUSY</code> — nothing was written; your approval, credential and <code>charmId</code> stand; announce again</td>
+</tr>
+</tbody>
+</table>
+<!-- sdk:errors:end -->
+<h3 id="announcing-again-after-a-person-approves-you">Announcing again, after a person approves you</h3>
+<p><code>pending</code> is the only status the hub assigns — nothing in a request can ask for <code>active</code>. <strong>Approval happens in the Charm Manager</strong> (MBXHub settings → <em>Charm Manager</em> tab), on the machine, and there is no REST route that grants anything. Registration is how you find out: the <strong>next</strong> announcement from the local machine under the same <code>id</code>, once a person has approved you, carries your credential.</p>
+<pre><code>→ 200 { &quot;charmId&quot;: &quot;…&quot;, &quot;status&quot;: &quot;active&quot;, &quot;grantedScopes&quot;: [ … ], &quot;ticket&quot;: &quot;…&quot;,
+        &quot;restartRequired&quot;: [], &quot;apiVersion&quot;: &quot;1&quot; }
+</code></pre>
+<p><strong>The plaintext ticket is handed over once.</strong> It is held in the hub’s memory until it is claimed — only its digest is written — so a later announcement answers <code>active</code> and <code>grantedScopes</code> with no <code>ticket</code>, and a hub restart between the approval and your next announcement loses the parked plaintext and costs a re-approval. Store it the moment you receive it; nothing re-reads it.</p>
+<p><strong>A caller the hub could not resolve does not collect it either.</strong> When the peer lookup runs and cannot say which process is calling, the answer is still <code>active</code> and still states <code>grantedScopes</code>, the plaintext stays parked, and the body carries <code>&quot;ticketWithheld&quot;: &quot;caller-unresolved&quot;</code>. Announce again from a connection the hub <em>can</em> resolve and the next answer delivers it, exactly once as before. That field is what tells this apart from the ordinary <em>you already collected it</em> answer, which is otherwise byte-identical and has the opposite remedy; it is <strong>absent</strong> from every other answer rather than sent as null, so its presence is the whole signal. It applies to every kind, not only <code>proc</code> — what failed is <em>who is calling</em>, which is not a question about substrate. The same lookup is what records your executable and your tier, so a registration nothing could resolve records neither: a charm no lookup has ever answered for carries no tier at all rather than <code>unsigned</code>, and one resolved before keeps what that lookup found.</p>
+<p><strong>Five things take an approval back</strong>, all of them on your next announcement, and all with the same disposition — back to <code>pending</code>, ticket cleared, and a person approves again. Four are about what you declared and keep your grants:</p>
+<ul>
+<li>announcing from a <strong>different executable</strong> than the one that was approved;</li>
+<li>declaring a <strong>different <code>launch</code> target</strong> — a scheme swapped for another, or an executable whose arguments changed;</li>
+<li>declaring a <strong>different set of placements</strong> than the row the person approved showed — your own placement plus whatever your <code>expand[]</code> entries resolve to;</li>
+<li><strong>rewording why you want a capability you already asked for</strong> — the sentence in <code>scopeReasons</code>, compared trimmed and case-<em>sensitively</em>, because it is prose a person read rather than a path or a keyword. It is the basis of their consent, so new words need a new yes.</li>
+</ul>
+<p>The fifth is about the hub, not you: a record approved under a <strong>different hub install</strong> — a charms folder carried to another machine — goes back to <code>pending</code> on its first announcement there, and this one also <strong>releases the grants</strong>, because the person who granted them is not the person running this hub.</p>
+<p>The rationale trigger compares <strong>only scopes the record already carried</strong>: asking for a new capability is the grants-pruning path’s business, not this one, so adding a scope does not knock you back on a rule about words that were never read. It does mean that the first announcement in which an <em>already-approved</em> charm starts sending sentences costs it its approval once — the row goes from <em>no reason given</em> to your words, which is the row reading differently, exactly as the rule says. Adopt <code>scopeReasons</code> in a release you would expect a re-approval in.</p>
+<p>The placement set is compared case-insensitively as a <em>set</em>, so order, duplicates, labels, icons and actions move nothing and an ordinary version bump is untouched: adding a second <code>rail</code> entry to a charm that is already a bar button changes no set, and adding a <code>menu</code> entry to a charm that declared only <code>rail</code> entries does. Removal counts too — the row said one thing and now says another. Clearing the ticket is part of the disposition rather than a consequence of it: the old credential resolves to nothing, so a gated call presenting it answers <code>401</code>, and a charm cannot move its own launch gate and keep the yes. A registration whose caller could not be resolved is not an observation at all, so it can neither move that gate nor erase what is on the record.</p>
+<p>A <code>pending</code> registration has no usable ticket and receives no privileged access. First registration has no grants; approval-invalidating updates can retain stored grants for re-approval, as the lifecycle table specifies. Rail surfaces hide pending registrations; a menu built earlier may remain visible but refuses activation.</p>
+<h3 id="registration-and-credential-lifecycle">Registration and credential lifecycle</h3>
+<!-- sdk:lifecycle:start -->
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Registration after event</th>
+<th>Persistent grants</th>
+<th>Ticket</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>First announcement</td>
+<td><code>pending</code></td>
+<td>None</td>
+<td>None</td>
+</tr>
+<tr>
+<td>Console approval</td>
+<td><code>active</code></td>
+<td>Operator-selected requested scopes</td>
+<td>Minted; plaintext collected once on a subsequent resolvable local announcement</td>
+</tr>
+<tr>
+<td>Ordinary manifest update</td>
+<td>Unchanged</td>
+<td>Intersected with requested scopes; new scopes ungranted</td>
+<td>Retained</td>
+</tr>
+<tr>
+<td>Changed executable, launch target, placement set, or rationale for an existing scope</td>
+<td><code>active</code> → <code>pending</code></td>
+<td>Retained, subject to requested-scope pruning; unusable while pending</td>
+<td>Cleared; console re-approval required</td>
+</tr>
+<tr>
+<td>Different hub identity on announcement</td>
+<td><code>pending</code></td>
+<td>Cleared</td>
+<td>Cleared; console re-approval required</td>
+</tr>
+<tr>
+<td>Console revoke</td>
+<td><code>revoked</code></td>
+<td>Cleared</td>
+<td>Cleared; announcing again does not undo revocation</td>
+</tr>
+<tr>
+<td>Hub restart after ticket collection</td>
+<td>Unchanged</td>
+<td>Unchanged</td>
+<td>Collected ticket survives; no time-based expiry</td>
+</tr>
+<tr>
+<td>Hub restart before ticket collection</td>
+<td><code>active</code></td>
+<td>Unchanged</td>
+<td>Parked plaintext lost; console approval can mint a replacement</td>
+</tr>
+<tr>
+<td>Console approval with an already delivered live ticket</td>
+<td><code>active</code></td>
+<td>Updated by operator</td>
+<td>Retained; no refresh credential is issued</td>
+</tr>
+</tbody>
+</table>
+<!-- sdk:lifecycle:end -->
+<h2 id="permissions-what-you-may-ask-for">Permissions — what you may ask for</h2>
+<p>A capability is either <strong>granted</strong> or it is not, and when it is not there are <strong>four distinct reasons</strong> — never one undifferentiated no. These are the words used everywhere: here, on the wire, and in what a person is shown.</p>
+<!-- sdk:states:start -->
+<table>
+<thead>
+<tr>
+<th>State</th>
+<th><code>state</code> on the wire</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>granted</strong></td>
+<td><em>(no error — the call succeeds)</em></td>
+<td>a person authorized it; your ticket carries it</td>
+</tr>
+<tr>
+<td><strong>not-granted</strong></td>
+<td><code>not-granted</code></td>
+<td>never asked for, or asked for and not yet answered. Asking again is the remedy</td>
+</tr>
+<tr>
+<td><strong>declined</strong></td>
+<td><code>declined</code></td>
+<td>a person was asked and said no, and that is remembered. Re-asking on retry does nothing; a new <code>version</code> may ask again</td>
+</tr>
+<tr>
+<td><strong>reserved</strong></td>
+<td><code>reserved</code></td>
+<td>policy withholds it from <strong>every</strong> caller, ours included, with a reason. Temporary by intent</td>
+</tr>
+<tr>
+<td><strong>banned</strong></td>
+<td><code>banned</code></td>
+<td>revoked for a specific charm and capability. <strong>The only permanent refusal</strong></td>
+</tr>
+</tbody>
+</table>
+<!-- sdk:states:end -->
+<p><strong>Why <code>declined</code> is its own state.</strong> The two call for opposite behavior from you: <code>not-granted</code> means ask; <code>declined</code> means a person has already answered and asking again is noise they will resent. An integration that cannot tell them apart either nags or gives up, and both are wrong. The same reasoning separates <code>reserved</code> — <em>not available to anyone yet</em> — from <code>banned</code>, which is the only one that means no and stays no.</p>
+<ul>
+<li><strong>Nothing is reserved to its author.</strong> There is no capability that charms we write can hold and yours cannot. If a class is reserved, it is reserved for everyone, including us.</li>
+<li><strong>A partial grant is normal, not a failure.</strong> Ask for four classes, be granted three, and you receive a ticket carrying three. The fourth returns an error naming itself. Design for this: it is the expected outcome, not an edge case.</li>
+</ul>
+<p><strong>What you may ask for is a named list, not a guess.</strong> A capability is named <code>area:verb</code> — <code>proxy:lan</code>, <code>library:read</code>, <code>automation:wake</code> — and the authoritative list for the build you are talking to is readable at <code>GET /charms/capabilities</code>, with each entry’s current maturity and whether it is reserved. A scope name the build does not know is refused by name at registration, never silently dropped.</p>
+<p><strong>Every scope you request carries one sentence of your own saying why.</strong> Write it as the truth, for the person, not for us; a rationale that does not match what the application then does is what gets an extension revoked. The carrier is a top-level <code>scopeReasons</code> object, scope name to sentence, beside <code>scopes</code> rather than inside it, so no manifest that has ever shipped changes shape:</p>
+<pre><code>{
+  &quot;id&quot;: &quot;com.example.thing&quot;,
+  &quot;schemaVersion&quot;: 2,
+  &quot;scopes&quot;: [ &quot;playback:control&quot;, &quot;library:read&quot; ],
+  &quot;scopeReasons&quot;: {
+    &quot;playback:control&quot;: &quot;to pause the music when a call comes in&quot;,
+    &quot;library:read&quot;: &quot;to show what you are listening to on the lock screen&quot;
+  }
+}
+</code></pre>
+<p><strong>Declare <code>schemaVersion: 2</code> and give every scope its sentence</strong> — that is how a charm written to this document registers. Version 1, declared or absent, is tolerated for manifests that predate the field: such a charm registers exactly as it always did, and pays for it on the approval row, where each capability it asks for reads <em>no reason given</em>. A sentence that <em>is</em> present is judged at every version, because one that cannot be shown is not made showable by the version it arrived under.</p>
+<p><strong>The shape:</strong> one line, at most 200 characters, trimmed — a row beside a capability’s name, not a paragraph and not a layout you control. <strong>The same set as <code>scopes</code>:</strong> a scope with no sentence is <code>SCOPE_RATIONALE_MISSING</code> (the one refusal the version gates), a sentence that will not fit is <code>SCOPE_RATIONALE_INVALID</code>, and a sentence for a scope you did not ask for is <code>SCOPE_RATIONALE_UNKNOWN</code> — refused, not dropped, because words nobody will ever read are worth being told about while you are still here. All three name the offending scope, and all three are answered before a byte is written.</p>
+<p><strong>Where it is read.</strong> Verbatim on the Charm Manager’s approval row, beside the capability’s own sentence, which is ours; and again on the runtime prompt, on its own line and labelled <em>They say:</em>, in quotes. The two are never merged: ours says what the capability lets <em>anybody</em> do, yours is a claim you make about your own application, and an unlabelled sentence of yours would borrow the standing of ours. Nothing is composed on your behalf — a record carrying no sentence shows only ours, and says so. <strong>Rewording it takes the approval back</strong>, which is the fourth trigger above.</p>
+<h3 id="automation-classes">Automation classes</h3>
+<p>Split against what they actually do, because “automation” is too coarse for a person to authorize honestly — waking a machine and typing on it are not the same decision:</p>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>What a person is agreeing to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Automation status</td>
+<td>see whether automation is available</td>
+</tr>
+<tr>
+<td>Remote wake</td>
+<td>wake this computer</td>
+</tr>
+<tr>
+<td>Library maintenance</td>
+<td>trigger a library scan</td>
+</tr>
+<tr>
+<td>Saved automations</td>
+<td>run a routine <strong>the person wrote themselves</strong></td>
+</tr>
+<tr>
+<td>Remote control</td>
+<td>type and click on this computer — <strong>the heavy one</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Remote control is withheld from nobody — and it is not open to anyone either.</strong> It is a deliberate grant made at the console: named plainly, granted at the MusicBee machine, visible and revocable. Any caller may ask for it and no publisher is privileged in asking; what it never is, for us or for you, is on by default.</p>
+<p><strong>How this meets the surface that exists today.</strong> These routes are currently governed by one switch the person at the console controls. The classes above apply to <em>registered</em> callers presenting a ticket — they are not yet enforced against an unregistered caller, whose behavior is the open switch and is unchanged. Whether that changes is the break described above: announced, versioned, never silent.</p>
+<h2 id="enforcement-the-ticket-and-the-errors">Enforcement — the ticket and the errors</h2>
+<ul>
+<li>The ticket is <strong>opaque</strong>, 32 random bytes, and travels in the <strong><code>X-MBXHub-Ticket</code></strong> header. Never in a query string — those end up in logs and referrers; one there is refused even when valid.</li>
+<li>It is checked <strong>once, at dispatch</strong>. Existing endpoints are not rewritten to know about it.</li>
+<li><strong>No ticket means today’s behavior.</strong> That is the compatibility door.</li>
+<li><strong>There is no time-based expiry or refresh endpoint.</strong> Revocation, a different hub identity, and approval-invalidating updates clear tickets. Follow the lifecycle table above: announce locally and obtain console re-approval when required. Re-announcing alone does not undo revocation.</li>
+<li><strong>You need not drop the header to recover.</strong> A ticket, valid or stale, is looked at only when the route you called is gated. On the open surface — which includes <code>POST /charms/register</code> — a stale ticket costs you nothing and is not even resolved. On ungated routes, holding a ticket does not change access. On gated routes, omitting the ticket retains legacy behavior; ticket-based refusals do not restrict that separate anonymous path.</li>
+<li><strong>It is bound to the locality it was issued in.</strong> A ticket is refused from a non-local address regardless of validity. A charm whose code answers remotely therefore cannot present one from its remote half: its privileged reach is what its local half does on its behalf, and everything else it reads is the permanently open surface, which needs no ticket.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>No ticket</td>
+<td>unchanged behavior</td>
+</tr>
+<tr>
+<td>Unknown or revoked ticket</td>
+<td><code>401</code></td>
+</tr>
+<tr>
+<td>Valid ticket, capability <strong>not granted</strong></td>
+<td><code>403</code> with <code>&quot;state&quot;: &quot;not-granted&quot;</code>, <strong>naming the capability</strong></td>
+</tr>
+<tr>
+<td>Valid ticket, capability <strong>declined</strong> by the person</td>
+<td><code>403</code> with <code>&quot;state&quot;: &quot;declined&quot;</code> — re-asking on retry does nothing; a new <code>version</code> may ask again</td>
+</tr>
+<tr>
+<td>Capability <strong>reserved</strong></td>
+<td><code>403</code> with <code>&quot;state&quot;: &quot;reserved&quot;</code> and a reason — <em>not available yet</em>, never confused with declined or banned</td>
+</tr>
+<tr>
+<td>Capability <strong>banned</strong></td>
+<td><code>403</code> with <code>&quot;state&quot;: &quot;banned&quot;</code> — the one answer that means no, and says so</td>
+</tr>
+</tbody>
+</table>
+<p>Every <code>403</code> carries <code>&quot;capability&quot;: &quot;&lt;name&gt;&quot;</code> so an integration problem is a five-minute fix rather than a support thread, and <code>state</code> so the four outcomes are distinguishable on the wire and not only in a person’s head.</p>
+<h3 id="the-runtime-prompt">The runtime prompt</h3>
+<p><strong>A consent prompt is rendered on the MusicBee machine, by a path that accepts requests only from that machine.</strong> That is a security property, not a convenience: a prompt that could be raised from the network would be a consent dialog with a <em>Trust</em> button that anyone on the network could put in front of the person. The prompt cannot be relayed to a user somewhere else, precisely because it must not be forgeable from somewhere else.</p>
+<p>It is raised only for a charm whose tier is <code>pinned</code> or <code>unsigned</code> — a signed-and-known charm’s enable is its consent — only for an outward-acting capability, and never for a <code>page</code> or <code>endpoint</code> charm. <strong>A <code>proc</code> charm with no recorded tier is asked as well,</strong> for every outward-acting call: nothing has looked at an image, and an absence of evidence is not evidence of quiet. The <em>kind</em> is what settles a page, not the tier — a page carries no tier either, and a rule keyed on tier alone would be relying on that staying true. It leads with the tier, names one capability in the capability’s own words, and offers <strong>Not now</strong> (first, and the default) or <strong>Trust</strong>.</p>
+<ul>
+<li><strong>A <em>Trust</em> click cannot walk past a refusal.</strong> After <em>Trust</em> the whole dispatch decision runs again from scratch; a capability that is banned, reserved or declined stays refused. Trust adds an allowance, it never removes a rule.</li>
+<li><strong><em>Trust</em> is not a grant.</strong> It is remembered in memory for that charm and that target for the life of the MBXHub process, and spreads to no other capability or charm. A persistent grant is made only in the Charm Manager. <em>Not now</em> silences that capability for the session. <strong>A person’s absence is never a yes:</strong> if nothing can render the prompt, the answer is <em>not now</em>.</li>
+<li>The prompt carries a nonce the hub minted, and the answer rides back on the same exchange — no inbound route can answer a question that was not asked.</li>
+</ul>
+<p><strong>Known limit today:</strong> for the network-devices capability a <em>Trust</em> is remembered per capability, not per device — the destination lives in the request body, which the dispatch check does not read — so a second device does not re-prompt within the session. Stated so nobody relies on the finer grain.</p>
+<p><strong>The prompt can be switched off, and a charm cannot switch it off.</strong> <em>Show runtime prompts</em> sits in the Charm Manager tab, on by default. Off means every question that would have been asked answers <em>not now</em>, silently and immediately: the call gets the same <code>403 not-granted</code> a person clicking <em>Not now</em> would have produced, nothing is granted, and nothing is declined for the session — the answer is held as an absence, on a short cooldown, so turning prompts back on lets the question reach a person again without a restart. <strong>What you may do is identical either way:</strong> the switch sets how loud MBXHub is, never what is granted.</p>
+<blockquote>
+<p><strong>Grants live at the console, and only there.</strong> Approving, declining, revoking and banning happen in MBXHub settings → <em>Charm Manager</em> tab, on the MusicBee machine. There is no REST route and no web page that grants a capability. The route that writes settings answers <code>403</code> for any key in the console-only categories, naming the offending keys, and applies <strong>nothing</strong> for that request — pairing a protected key with an ordinary one writes neither. A control that decides whether a person is consulted must not be reachable by the software that wants their answer.</p>
+</blockquote>
+<p><strong>Revocation is survivable by design.</strong> When a person revokes you, your next privileged call returns <code>401</code> and everything unprivileged keeps working. <strong>The expected behavior is that you degrade to what you did before you registered.</strong> An extension that breaks on revocation is treating a person’s decision as a fault.</p>
+<p><strong>Pages we host are subject to the same rules.</strong> If MBXHub displays your page inside one of its own surfaces, that page reaches privileged actions only within the capabilities you were granted. The convenience of being hosted does not carry our authority.</p>
+<h2 id="surfaces-where-a-charm-appears">Surfaces — where a charm appears</h2>
+<p><strong>Inside MBXHub’s own pages is where a charm renders by default.</strong> When the MBXHub Shell is running, a charm can also be popped out to a desktop window of its own — that needs no MusicBee surface and no restart. Without the Shell there is no window to pop out to and the charm stays inside the pages; a plugin-only install deliberately shows no pop-out.</p>
+<p><strong>A registration is not on a surface until a person approves it.</strong> Announcing yourself puts a manifest in the folder the charm surfaces read, so without this rule registering would put a button on somebody’s bar that nobody said yes to. A registration that is <em>pending</em> or <em>revoked</em> is therefore not rendered — not on the dashboard bar, not on the Charm Bar rail, not as a window — while the record itself is untouched and still listed in the Charm Manager, which is where a person sees what is waiting on them. A manifest carrying no registration block at all renders as it always did; absence means <em>not a registration</em>, never <em>pending</em>. <strong>Rail approval takes effect on the next render without a restart.</strong> MusicBee menus are built at startup; revoked items can remain visible until restart, but their clicks are refused.</p>
+<p><strong>A framed charm’s page is not isolated from the page that frames it, and that is a convention rather than a boundary.</strong> A charm rendered inside one of our pages is loaded in an ordinary un-sandboxed frame: what stops it reaching a privileged action is the host page’s fixed list of open verbs — a host page performs only those for a page it frames, and anything else is refused with one log line naming the verb — not the browser. That is honest for the pages we ship and for a page somebody with access to the machine dropped into their own charms folder, but it is <strong>not</strong> a boundary we can offer for a page we did not author. Treat the frame as a rendering arrangement between parties who already trust each other, and read the enforcement section for the boundary that is real: the dispatch check, which no page can talk its way past, because no page holds a ticket.</p>
+<h3 id="a-charm-can-be-a-button-in-the-hud">A charm can be a button in the HUD</h3>
+<p>A charm that declares a <code>launch</code> target <strong>and</strong> claims the <code>overlay</code> placement is drawn as a tile in
+the HUD's Services drawer. Pressing it starts what the manifest declares, under the same launch
+policy as the Tools menu — the deny-list, the operator's allow-list, and the observed-image gate all
+still decide.</p>
+<pre><code>GET  /charms/services      → { &quot;local&quot;: true, &quot;services&quot;: [ { &quot;id&quot;, &quot;label&quot;, &quot;icon&quot;, &quot;launchKind&quot; } ] }
+POST /charms/{id}/launch   → 200, or a named refusal
+</code></pre>
+<p><code>launchKind</code> is <code>scheme</code> or <code>exe</code>, which is all a button needs; <strong>your launch target is never
+returned</strong>, because it is the operator's to read on the approval row. The press is <strong>local-only</strong>, so
+off-loopback the list answers empty with <code>local: false</code> rather than drawing tiles that cannot work.
+The launch route takes <strong>no target parameter</strong> — the same structural binding that keeps <em>what was
+approved</em> and <em>what starts</em> from coming apart.</p>
+<p>Declaring the placement is how you <strong>ask</strong> for that surface. Without the condition, every Tools-menu
+launch charm would appear in the HUD as a side effect of existing.</p>
+<p>Refusals: <code>403 NOT_LOCAL</code>, <code>404 NOT_FOUND</code>, <code>403 LAUNCH_REFUSED</code> carrying the policy's own reason,
+and <code>409 LAUNCH_NOT_STARTED</code> when the plan was allowed and the process did not start.</p>
+<h3 id="the-menu-placement">The <code>menu</code> placement</h3>
+<p><strong>Eligible <code>menu</code> entries appear under Tools → MBXHub at MusicBee’s next start</strong>, grouped by charm label (or id if blank). A registration, if present, must be <code>active</code>. A file-installed manifest with no registration block is also eligible. The same eligibility rule applies to menu clicks, HUD services, and launching; an unregistered file can launch a URL scheme under policy, but cannot launch an executable because it has no observed image.</p>
+<p><strong>The status is re-checked at the click</strong>, against the charm as it is on disk at that moment, so a charm revoked after the menu was built is refused when its item is clicked and the reason is logged. MusicBee has no API for removing a menu item, so the item stays visible until MusicBee next starts — what is gated is the click, not the drawing. A click that passes delivers the activation by your kind, and starts your <code>launch</code> target as well when the entry’s action is the bare <code>launch</code> verb.</p>
+<h3 id="delivery-how-an-activation-reaches-you">Delivery — how an activation reaches you</h3>
+<p><strong>Delivery is part of the contract.</strong> A menu item whose click reaches nothing is worse than no menu item. When a person activates a surface you registered, the event is delivered to you the way your kind is reached, and registering a surface and receiving its events are one feature, not two. The event is <code>CharmActivated</code>, and its payload is the same either way:</p>
+<pre><code>{ &quot;event&quot;: &quot;CharmActivated&quot;,
+  &quot;data&quot;: { &quot;charmId&quot;: &quot;com.example.thing&quot;, &quot;event&quot;: &quot;activated&quot;, &quot;placement&quot;: &quot;menu&quot;,
+            &quot;entryIndex&quot;: 0, &quot;entryLabel&quot;: &quot;Open Thing&quot;, &quot;atUtc&quot;: &quot;…&quot; } }
+</code></pre>
+<ul>
+<li><strong>A <code>proc</code> charm reads it on its own socket.</strong> Connect to the hub’s WebSocket at <code>ws://&lt;host&gt;/ws</code> from this machine and name yourself by sending <code>{&quot;bind&quot;: &quot;&lt;your ticket&gt;&quot;}</code> — the ticket you were handed at registration. Binding is <strong>loopback only</strong>: a socket from across the network is not bound and is not told whether the ticket it presented was real, and it carries on as an ordinary event socket either way. A bound socket receives its own charm’s activations <strong>whatever it subscribed to</strong>, so a forgotten subscription cannot turn a menu item into a click that does nothing. There is no unbind; the connection is the lifetime.</li>
+<li><strong>A <code>proc</code> charm with no socket connected falls back to its <code>endpoint</code></strong>, and an <code>endpoint</code> charm has that route and no other. The POST is <code>http</code> or <code>https</code> only, to a private or loopback host — checked as a string and <strong>never resolved</strong>, because a name whose owner controls the answer is not a boundary. The whole call gets 2000 ms, redirects are not followed, and the response body is never read: the status code is all delivery needs.</li>
+<li><strong>A <code>page</code> charm’s activation is broadcast</strong>, because the hub has no handle on the frame — the dashboard does, and its socket handler forwards the event into the right frame. There is nothing for a page to bind.</li>
+<li><strong>A <code>proc</code> with neither a bound socket nor an <code>endpoint</code></strong> is the one case where nothing can be done, and it is logged as a warning naming the gap. A click that reaches nothing <em>silently</em> is worse than one that reaches nothing, because the person has nowhere to look.</li>
+</ul>
+<h3 id="launching-what-a-launch-target-may-start">Launching — what a <code>launch</code> target may start</h3>
+<p>A <code>menu</code> entry whose action is the bare verb <code>launch</code> starts the manifest’s <code>launch</code> field when a person clicks it. The target is always that field — never anything in the entry, never anything a caller supplies — so the string the person approved is the string that runs, and a registration, if present, must be <code>active</code>. Two kinds of target exist, and they are judged differently.</p>
+<p><strong>An executable is judged by identity.</strong> It must be the image the hub watched register — the same file after path normalization, compared case-insensitively — so a charm may launch itself and nothing else, and a sibling file in a folder it can already write to is not itself. Arguments after the image are passed through verbatim. No list applies to an executable.</p>
+<p><strong>A URL scheme is judged by policy, in a fixed order, and the order is the whole shape.</strong></p>
+<ul>
+<li><strong>The hub’s deny-list, first, and it wins.</strong> A closed set carried in code: <code>javascript</code>, <code>vbscript</code>, <code>data</code>, <code>file</code>, <code>http</code>, <code>https</code>, <code>ms-msdt</code>, <code>ms-appinstaller</code>, <code>shell</code>, <code>search-ms</code>, <code>res</code>, <code>about</code>, <code>microsoft-edge</code>, <strong>and every scheme beginning <code>ms-</code></strong>. Those are script hosts, document handlers and shell verbs rather than app launchers; <code>http</code> and <code>https</code> are refused because a page is a <code>webapp</code> and that keeps <code>launch</code> meaning one thing; <code>microsoft-edge</code> is the same door one hop along, since the scheme takes a URL and hands it to a browser. A denied scheme is refused on every install, whatever the allow-list says. Naming it on the allow-list does not buy it back. No vendor scheme is on the list.</li>
+<li><strong>The operator’s allow-list, second.</strong> A console-only setting, <code>charmLaunchAllowedSchemes</code>, which <strong>ships as <code>*</code></strong>: every scheme the deny-list has not refused, which is exactly what every install did before the setting existed. A list of names allows only those — exact names, compared case-insensitively, separated by commas, semicolons or whitespace, a trailing <code>:</code> tolerated, and a <code>*</code> anywhere in the list means everything. <strong>There are no globs</strong>, so a per-install scheme such as <code>FirefoxURL-&lt;hash&gt;</code> has to be written out by its full name. <strong>An empty list allows no scheme at all</strong> — that is the locked-down install. Executables are unaffected either way, because identity judges them.</li>
+</ul>
+<p><strong>What it does, and what it does not.</strong> At <code>*</code> it does not make a stock install safer — the deny-list is still the only thing standing, as before. What it does is make a <em>deliberate</em> install lockable. It is a security setting, so it is absent from the web settings page and from <code>GET /system/settings/schema</code>, refused by <code>PUT /system/config</code> with <code>403 SETTING_CONSOLE_ONLY</code>, and answered in one place: <em>MBXHub settings → API Access tab → Remote Control → “Launch allow-list (schemes)”</em>.</p>
+<p><strong>What you see, and what you do not.</strong> None of this reaches the wire: registration answers the same whether or not the list would refuse you, because the launch is judged at the click and not at registration. A refused click starts nothing and writes one warning to the hub’s log naming the scheme and which list refused it. The person approving you sees it earlier — the Charm Manager’s approval detail reads <em>Refused: … is not on the launch allow-list</em> before the yes, so an approval that would start nothing is visible at the one moment that is worth knowing. So name the schemes your charm relies on in your own documentation: the operator who has narrowed the list is the only one who can add yours.</p>
+<p><strong>The residual, stated rather than hidden:</strong> a vendor scheme can be registered to anything on the machine. That is the shell’s contract rather than ours, and a person approving <code>Launch: steam://run/4813240</code> is approving that string. The Charm Manager says so on the row.</p>
+<p>The remaining MusicBee-side doors — a navigator node, a tab, a hotkey, a background-task status line — are not in this build, and none of them ships without its delivery path.</p>
+<h2 id="trust-it-sets-the-noise-never-the-capability">Trust — it sets the noise, never the capability</h2>
+<p>Signature and catalog status decide <strong>how loudly you have to ask</strong>, never <strong>what you may hold</strong>.</p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Evidence required</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>halrad-signed</code></td>
+<td>shipped by us, or signed by our key</td>
+</tr>
+<tr>
+<td><code>verified</code></td>
+<td>an Authenticode signature that chains to a trusted root — a code-signing certificate from a public CA</td>
+</tr>
+<tr>
+<td><code>pinned</code></td>
+<td>a signature that does <strong>not</strong> chain, first seen at install and continuous since. <strong>Not reachable in this build</strong> — see below</td>
+</tr>
+<tr>
+<td><code>unsigned</code></td>
+<td>no signature at all — <strong>and, today, any signature that does not chain</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Why <code>pinned</code> is not reachable, stated rather than hidden.</strong> The operating system check this build relies on reports one state for “the signature does not chain to a trusted root” whether the cause is a self-signed certificate, an expired one, or a <strong>tampered image</strong> — and a patched binary must never be quieter than an honest unsigned one. So until the check can tell those apart, every non-chaining signature tiers as <code>unsigned</code>. A self-signed publisher is exactly as loud as an unsigned one today, and reaches quiet only through a certificate that chains.</p>
+<ul>
+<li>Being signed and known buys <strong>quiet</strong>. Being unknown costs <strong>interruption</strong> — prompts, a visible tier — never function.</li>
+<li><strong>Tier does not grant a capability.</strong> Missing grants, declines, reservations and bans still refuse the call; a quiet tier bypasses none of them.</li>
+<li>An unsigned extension is a tier, not an error. Distribution by any channel stays viable.</li>
+</ul>
+<p><strong>Certificate renewal must not cost you a tier.</strong> Continuity is judged on the certificate subject, not the key: a renewed certificate with the same subject keeps your tier, and a change of subject is treated as a new publisher and asks the person once — one re-consent, not a drop to <code>unsigned</code>. <em>The successor mechanism for a subject change is not in this build.</em></p>
+<p><strong>The ladder is evidence about an executable, and that is the only kind it applies to.</strong> A <code>page</code> is a file on disk, and something with access to that machine put it there — that is its provenance, and a signature would re-prove locally what local access already established. An <code>endpoint</code> has no local image and is not asked for one; what can be known about it is where it answers from — the local machine, this subnet, or beyond — and whether that has changed since first sight. So <strong>a <code>page</code> or an <code>endpoint</code> carries no tier at all</strong>, rather than sitting at the bottom of the ladder: <code>unsigned</code> is a statement about an executable that was not signed, and neither of them is an executable.</p>
+<blockquote>
+<p><strong>The hub applies the same check to itself.</strong> The plugin verifies its own image against the Halrad signing certificate the way it verifies a <code>proc</code> charm — a valid signature <em>and</em> our certificate, since either alone can be satisfied by a file that should not pass — and reports the result on <code>GET /system/version</code> as <code>signature</code> and <code>signatureVerified</code>. If you want to know you are talking to a shipped, unaltered build, read that. “Could not determine” is its own state and is never reported as verified.</p>
+</blockquote>
+<h2 id="license-grants">License grants</h2>
+<p><strong>Verification is implemented, but no verification key ships in the inspected build: grants fail closed with unknown keyId.</strong> A signed grant <code>{publisher, class, expiry}</code> may unlock a license-gated class once an issuing arrangement and verification key are available. Verification is offline, at registration, and re-checked on every start; a verified grant is recorded on the registration as a <em>licensed</em> class and the dispatch check honors it.</p>
+<ul>
+<li><strong><code>publisher</code> is the string we signed.</strong> At issue it is bound to your certificate subject, so the grant and your signature name the same party. There is no separate registry of publishers to be in.</li>
+<li><strong>Grants bind to the publisher</strong>, not to an installation. Resetting or reinstalling MBXHub does not cost you a license you hold.</li>
+<li><strong>A tampered or expired grant fails closed for that class only.</strong> Everything else continues to work.</li>
+<li><strong>The local clock decides expiry.</strong> Verification is ECDSA P-256 against a public key compiled into the build and selected by <code>keyId</code> — no new dependency, and <strong>no network call, ever</strong>. A disconnected machine never stalls, and we never phone home to check. Expiry is checked at every decision. A clock ahead can expire a grant early; a clock behind can prolong acceptance. Local-clock verification does not detect clock rollback.</li>
+<li><strong>The wire shape.</strong> <code>base64url(payloadJson) &quot;.&quot; base64url(signature)</code>. The payload is <code>{ &quot;publisher&quot;, &quot;class&quot;, &quot;expiry&quot; (ISO-8601 UTC), &quot;keyId&quot; }</code> and is verified over the <strong>bytes exactly as sent</strong> — never a re-serialization, because two serializers disagree on whitespace and a grant that verifies on one build and fails on the next would look like tampering. The signature is the raw IEEE P1363 form — <code>r</code> followed by <code>s</code>, 64 bytes for P-256 — <strong>not DER</strong>.</li>
+<li><strong>A license is outranked.</strong> A ban, a decline, a reservation and a revoked record each outrank a valid license, and a license never loosens the ticket rules.</li>
+<li><strong>Our signing key will rotate, and your grant survives it.</strong> Every grant names the key that signed it, and a build carries the public halves of the current key <strong>and its predecessors</strong>. A grant issued under a retired key keeps verifying for as long as it has not expired; you are never asked to obtain a new grant because <em>we</em> changed a key.</li>
+<li><strong>A grant is presented at registration</strong>, in the manifest. It is not a per-request credential and never travels in a header; the ticket does that work.</li>
+</ul>
+<h2 id="versioning-what-evolves-on-separate-clocks">Versioning — what evolves, on separate clocks</h2>
+<p>Named separately, because merging any two of them is how a format rots.</p>
+<table>
+<thead>
+<tr>
+<th>What</th>
+<th>Field</th>
+<th>Who owns it</th>
+<th>Moves when</th>
+<th>In this build</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Manifest format</td>
+<td><code>schemaVersion</code></td>
+<td>us</td>
+<td>a field or verb is added — including a new <code>kind</code> value</td>
+<td>parsed; absent means 1</td>
+</tr>
+<tr>
+<td>Your release</td>
+<td><code>version</code></td>
+<td>you</td>
+<td>you ship</td>
+<td>parsed and recorded</td>
+</tr>
+<tr>
+<td>The contract</td>
+<td><code>apiVersion</code></td>
+<td>us</td>
+<td>the API surface changes</td>
+<td><code>&quot;1&quot;</code>, answered by <code>/ping</code> and by every registration response</td>
+</tr>
+<tr>
+<td>Capability maturity</td>
+<td><code>lab</code> / <code>optional</code> / <code>default</code></td>
+<td>us, per capability</td>
+<td>a capability becomes safe to offer</td>
+<td>every capability carries one and <code>GET /charms/capabilities</code> states it; this build uses <code>lab</code> and <code>default</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>What <code>apiVersion</code> is intended to promise:</strong> under a fixed value we will not remove a field, change a response type, or retire a route; we may add. A change gets a version bump and notice two releases ahead. It is deliberately not our product version, and it is the one to pin against. That promise is proposed rather than committed — the one commitment on this page is the open read surface, and it says so on purpose.</p>
+<h2 id="verification-and-limits">Verification and limits</h2>
+<p>The documentation reconciliation ran 270 targeted Release tests, all passing, covering placement resolution (including the 18-manifest, 32-entry seeded corpus), menu eligibility, launching, runtime prompts, registry transitions, callbacks, dispatch enforcement, and refusal vocabulary. These are automated checks of the implementation, not proof of deployment or end-to-end operation on your installation.</p>
+<p>Still outstanding: a real MusicBee Tools-menu click, a launch on an install with a narrowed allow-list, page activation forwarding in a browser, and long wall-clock ticket survival. The internal implementation ledger owns the detailed evidence inventory.</p>
+<p>Top-level placement shorthand, source-driven rendering, MusicBee doors other than the menu, no-surface declaration, certificate-renewal continuity, and endpoint-reach presentation remain unimplemented. The existing Shell pop-out and HUD launch tile do not imply those features exist.</p>
+<h2 id="telling-us-it-is-wrong">Telling us it is wrong</h2>
+<p>The most useful thing you can send back is the endpoint your integration reads that is not on the frozen list, or the clause here you would not implement. A clause nobody adopts is worse than a missing one, because it looks like a contract.</p>
+<p>Charms SDK — reconciled September 7, 2026. Describes the inspected implementation revision above; anything marked <em>not in this build</em> is designed and not yet shipped, with no date attached. See also <a href="https://mbxhub.com/api.html">the REST API</a> and <a href="/features.html#charms">Charms</a>.</p>
+
+</main></body></html>

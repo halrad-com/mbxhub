@@ -5,16 +5,20 @@ field, every error code lives there, and your own hub serves the current copy at
 is the part the reference cannot tell you: how the pieces fit, which shape your application should
 be, and what the whole path looks like end to end.
 
-Written against MBXHub 0.5.5.1. Every sample it names is in [`samples/`](../samples/) and builds
-with nothing but `dotnet build` or a browser.
+Written against MBXHub 0.5.5.1. Every sample it names is in [`samples/`](../samples/).
+The three introductory charms use .NET 8 or HTML/JS; other samples have their own toolchain
+requirements. Read each sample's README before building. For the contract and implementation
+limits, use the [SDK reference](charms-sdk.md); the [SDK index](MBXHub-SDK.md) links the documentation.
 
 ---
 
 ## The one thing to know first
 
-**An application that does not register keeps working exactly as it does today, indefinitely.**
-Registration *adds*; it never takes away. Every endpoint that answers an unregistered caller answers
-a registered one identically, and stays that way until a person grants something.
+**Registration adds an identity and capabilities; the anonymous API remains available.**
+The compatibility commitment covers the enumerated read endpoints and separately tested player
+verbs in the [SDK reference](charms-sdk.md#the-one-commitment). It is not a permanent guarantee for
+every reachable route: the reference describes an explicit automation exception.
+Calls without a ticket use the anonymous path; calls presenting a ticket are subject to its gates.
 
 So integrating is never a migration. You can ship against the open API, and register later only if
 you want the things registration brings: an identity on the hub, a menu entry inside MusicBee,
@@ -136,16 +140,27 @@ missing, over-long or unrequested sentence is refused by name before anything is
 
 ### 5. Collect the ticket
 
-Poll `GET /charms/{id}` until `status` is `active`, then **register once more**. The ticket travels
-on the first registration *after* an approval, exactly once:
+Poll `GET /charms/{id}` until `status` is `active`, then **register once more**. While the plaintext
+ticket remains available, the first subsequent local announcement whose caller the hub can resolve
+collects it, exactly once:
 
 ```
 → 200 { "status": "active", "grantedScopes": ["playback:control"], "ticket": "…" }
 ```
 
-Store it the moment you receive it; nothing re-reads it. If you lose it, a person has to revoke and
-approve again. An `active` answer with no `ticket` means you already collected it — unless it also
-carries `ticketWithheld`, which names the one case where the hub is holding it back on purpose.
+Store it the moment you receive it; nothing re-reads it. If you lose a collected ticket, a person
+must revoke and approve again in **MBXHub settings → Charm Manager**.
+
+An `active` answer without a ticket needs context:
+
+- `ticketWithheld: "caller-unresolved"`: the hub kept the ticket because it could not identify
+  the calling process. Announce again from a connection it can resolve; do not revoke for this case.
+- A ticket was already collected: use the stored credential. It survives a hub restart.
+- The hub restarted after approval but before collection: the undelivered plaintext was lost.
+  Console approval can mint a replacement; an active status alone does not prove collection.
+
+See the [credential lifecycle table](charms-sdk.md#registration-and-credential-lifecycle) for
+re-approval, revocation and update behavior. Announcing again does not undo a revocation.
 
 ### 6. Use it, and expect to be refused
 
@@ -162,14 +177,17 @@ carrying three. Design for it; it is the expected outcome.
 
 ### 7. Receive events
 
-By kind (§ *Pick your shape*). A `proc` opens a WebSocket and sends `{"bind":"<ticket>"}`; a bound
-socket receives its own charm's events whatever else it subscribed to. The event is the same shape
-on all three transports:
+By kind (§ *Pick your shape*). A `proc` opens `ws://<hub>/ws` locally and sends
+`{"bind":"<ticket>"}`; a bound socket receives its own charm's events whatever else it subscribed
+to. A WebSocket activation carries the `CharmActivated` envelope and its `data` payload:
 
 ```json
-{ "charmId": "com.example.thing", "event": "activated", "placement": "menu",
-  "entryIndex": 0, "entryLabel": "Do the thing", "atUtc": "2026-09-06T04:15:22Z" }
+{ "event": "CharmActivated",
+  "data": { "charmId": "com.example.thing", "event": "activated", "placement": "menu",
+    "entryIndex": 0, "entryLabel": "Do the thing", "atUtc": "2026-09-06T04:15:22Z" } }
 ```
+
+For HTTP callbacks and page forwarding, see [activation delivery](charms-sdk.md#delivery--how-an-activation-reaches-you).
 
 **Menu entries appear after MusicBee next starts** — menus are read at startup, which is what
 `restartRequired` on your registration answer is telling you.
@@ -264,8 +282,10 @@ as a change. Ship it in a release you expect a re-approval in.
 URL schemes launch at all. Your menu click then starts nothing, the hub log says why, and *nothing
 on the wire tells you* — so name the schemes your application relies on in your own README.
 
-**Nothing unapproved is drawn on a surface.** Until a person approves you there is no entry to
-click, whatever your manifest says.
+**Registered charms must be active to be eligible.** Pending and revoked registrations are hidden
+on the rails. A MusicBee menu item built earlier can remain visible until restart, but its click
+re-checks eligibility and is refused. A file-installed manifest with no registration block is
+eligible without registration approval; launch policy still applies.
 
 **Prompts are a person, not a rate limit.** An outward-acting call from an unsigned charm can raise
 a *Not now / Trust* prompt on the MusicBee machine, and your call waits for the answer. *Not now* is
@@ -292,11 +312,15 @@ Folder** link in MBXHub's settings dialog: it opens the right folder whatever th
 
 ## Where the details are
 
+- **[SDK index](MBXHub-SDK.md)** — the tutorial, contract, browser reference and examples.
+- **[Charms SDK reference](charms-sdk.md)** — manifest fields, supported placements, credential
+  lifecycle, named refusals and verification limits.
 - **Your own hub** serves the current reference at `/docs`, and a terse machine-readable copy at
-  `/llms.txt`. That is the copy that matches the build you are actually talking to.
+  `/llms.txt`. These describe the REST API for the build you are talking to; they do not replace
+  the Charms SDK reference linked above.
 - **[mbxhub.com/api.html](https://mbxhub.com/api.html)** — the same reference, published.
-- **[`samples/`](../samples/)** — the three above, plus browser, Perl, TypeScript and prompt
-  examples of the open API.
+- **[`samples/`](../samples/)** — the three introductory charms, a desktop app, Spout video,
+  browser, Perl, TypeScript and prompt examples. Requirements and limitations are in each README.
 
 Found something here that the hub does not do? That is a bug in this document. Say so — the
 contract is only worth what its description is worth.

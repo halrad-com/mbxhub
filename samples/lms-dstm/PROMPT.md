@@ -3,7 +3,7 @@
 Example LMS plugin source files result of the prompt below here: [musicbee-mbxhub-lms-dstm.zip](https://mbxhub.com/downloads/examples/musicbee-mbxhub-lms-dstm.zip)
 
 A prompt-style worked example (like the
-[playlist charm](playlist-charm-prompt.md)): everything an AI coding agent
+[playlist charm](../playlist-charm/PROMPT.md)): everything an AI coding agent
 needs to build a Lyrion Music Server plugin against a running MBXHub. Two
 pieces, one plugin:
 

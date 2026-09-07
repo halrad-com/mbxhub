@@ -1,8 +1,10 @@
 # MBXHub
 
-**Turn MusicBee into a network-accessible music service.**
+**The bridge to everything else.**
 
-MBXHub is a MusicBee plugin — paired with a lightweight Windows companion — that exposes your library and playback over a clean local **HTTP + WebSocket API**. Any device on your network can search, browse, control, and stream your music: web browsers, phones, scripts, home-automation, and companion apps all talk to the same hub.
+MBXHub transforms your media library into a network-accessible exchange service. Control or access it from any device on your local network. Integrate with other systems using standard HTTP/REST and WebSocket protocols.
+
+A MusicBee plugin with a companion desktop Shell, MBXHub brings together a browser-based media hub, device controls, automation and an API. Browse, play, search and manage your queue from a phone, tablet or desktop — no cloud, internet connection or account required.
 
 > **Prerelease — v0.5.x.x (release candidate).** MBXHub is under active development. The standing rule: every build should be better than the last.
 
@@ -10,19 +12,26 @@ MBXHub is a MusicBee plugin — paired with a lightweight Windows companion — 
 
 ## What this repository is
 
-This is for MBXHub examples and companion works. Hub releases live at **[mbxhub.com](https://mbxhub.com)**.
+This repository contains the **[Charms SDK documentation](MBXHUB-SDK/MBXHub-SDK.md)**, **[integration examples](samples/README.md)** and companion works. SDK documentation lives in the root-level `MBXHUB-SDK/` folder; examples live in `samples/`. Hub releases live at **[mbxhub.com](https://mbxhub.com)**.
 
 ---
 
-## Highlights
+## Six products behind one surface
 
-- 🎛 **Full playback & library control** over REST — play/pause, next/previous, volume, mute, shuffle/repeat, position, queue, ratings, and more (150+ endpoints).
-- 🔎 **MusicBee-aware search** — a real query language with field operators, autocomplete, saved searches, and history.
-- ⚡ **Real-time events** over WebSocket, on the same port as REST — track changes, playback state, and library updates, no polling.
-- 🖥 **Built-in web dashboard** — now-playing and full control in any browser, nothing to install on the client.
-- 📡 **Zero-config discovery** — hubs announce themselves on the LAN over SSDP.
-- 🔊 **Listen Here** — stream the current track straight to the browser.
-- 🏠 **Local-first & offline** — no cloud, no external services, no CDNs. Everything stays on your network.
+| Product | What it does |
+| --- | --- |
+| **Web application** | Browse, play, search and manage the queue from your phone, tablet or desktop. The Now Playing dashboard includes artwork, ratings, reactions and playback controls. |
+| **AutoQ — Music Mood Classification** | Use Truedat to scan your library's musical properties. Build stations influenced by your tastes, with queue selection based on mood, reactions, audio features and diversity. |
+| **Listen Here — Streamer** | Play through your normal speakers or stream selected music to the device in your hand. |
+| **ARiA — Automated Remote Input** | Send keyboard and mouse input to the host, launch applications, trigger hotkeys and run macros with DuckyScript syntax. |
+| **Charms — Application Host and Device Proxy** | Bring mini web apps and device controls onto the dashboard. Control volume, sources and configuration on supported WiiM and Fosi devices; Devialet devices are identified on the network. |
+| **REST / WebSockets** | Integrate through the REST and MusicBee APIs, with push events for playback, queue changes, artwork and reactions. |
+
+The **desktop Shell** adds a customizable HUD for browsing, playback and the queue, plus a system-tray application and Windows media controls through SMTC. It can target different MBXHub instances on the network and reconnect after an interruption.
+
+Clients discover MBXHub through **SSDP / WS-Discovery**. Bring your own HTML web app to build a player UI against the API, or use Party Mode for QR-code joining, song requests and reactions.
+
+See the [feature overview](https://mbxhub.com/features.html) and [AutoQ audio features](https://mbxhub.com/12sfaq.htm) for details.
 
 ---
 
@@ -48,20 +57,38 @@ MBXHub serves its own documentation. With the hub reachable at `http://<hub>/`:
 | `http://<hub>/changelog` | Release notes |
 | `http://<hub>/llms.txt` | Machine-readable API summary |
 
-Project site: **mbxhub.com**
+Project site: **[mbxhub.com](https://mbxhub.com)**
+
+### Requirements
+
+- Windows 10 or later
+- MusicBee 3.x
+- .NET Framework 4.8 for the plugin
+- .NET 8.0 Desktop Runtime for the MBXHub Shell
+
+[Download MBXHub](https://mbxhub.com/download.html).
 
 ---
 
-## Samples & Extensions
+## Charms SDK & Examples
 
-**Writing an extension?** Start with the **[integration guide](docs/integration-guide.md)** — how the pieces fit, which shape your application should be, and the whole path walked end to end. The REST reference answers *what*; the guide answers *how*.
+**Writing an extension?** Start at the **[SDK index](MBXHUB-SDK/MBXHub-SDK.md)**.
 
-Working examples live in [`samples/`](samples/): three `hello-*` charms, one per kind — a page, a program on the machine, and a service somewhere else — plus a browser control, a [Lyrion Music Server](https://lyrion.org/) plugin, an MCP server, and prompt recipes. Each one talks to MBXHub over its public REST / WebSocket API and stands on its own; none need the hub's source.
+| Documentation | What it covers |
+| --- | --- |
+| [Integration guide](MBXHUB-SDK/integration-guide.md) | Choose an integration kind and follow the registration flow. |
+| [Charms SDK reference](MBXHUB-SDK/charms-sdk.md) | Manifest fields, capabilities, credential lifecycle and implementation limits. |
+| [Browser reference](MBXHUB-SDK/charms-sdk.html) | Generated HTML version of the SDK reference. |
+| [Examples](samples/README.md) | Sample selection, setup and requirements. |
+
+For documentation changes, see [SDK maintenance](MBXHUB-SDK/charms-sdk-maintenance.md). Run `./build-charms-sdk.ps1` from this repository root to regenerate the reference, then `./build-charms-sdk.ps1 -Check` to verify it (PowerShell 7 required).
+
+Examples live in [`samples/`](samples/): three introductory charms, one per kind — a page, a program on the machine, and a service somewhere else — plus a desktop app, Spout video, a browser control, a [Lyrion Music Server](https://lyrion.org/) plugin, an MCP server, and prompt recipes. They use MBXHub's public interfaces without the hub's source. Each README lists its requirements; the Spout sample also needs the sibling `mbxspout` checkout and its built DLL.
 
 ---
 
 ## About
 
-MBXHub is built by **HALRAD LLC**.
+MBXHub is built by **[HALRAD Research](https://halrad.com)**.
 
-© 2026 HALRAD LLC · haro@halrad.com
+© 2026 HALRAD Research · haro@halrad.com

@@ -1,0 +1,316 @@
+{
+  "fields": {
+    "columns": [
+      "Field",
+      "Where",
+      "Meaning"
+    ],
+    "rows": [
+      [
+        "`id`",
+        "top level",
+        "unique, stable, the charm’s identity"
+      ],
+      [
+        "`kind`",
+        "top level",
+        "the substrate. Parsed; absent means `page`, unknown is kept verbatim"
+      ],
+      [
+        "`schemaVersion`",
+        "top level",
+        "the manifest format’s version. Parsed; absent means 1"
+      ],
+      [
+        "`label`",
+        "top level and per entry",
+        "what a person sees"
+      ],
+      [
+        "`expand[]`",
+        "top level",
+        "the charm’s actions"
+      ],
+      [
+        "`icon`",
+        "top level or per entry",
+        "inline SVG, or a character — passed through the icon contract below"
+      ],
+      [
+        "`action`",
+        "top level or per entry",
+        "verb + argument"
+      ],
+      [
+        "`display`",
+        "top level or per entry",
+        "the rail sub-mode — see below"
+      ],
+      [
+        "`msg`",
+        "top level or per entry",
+        "short confirmation text after the action runs"
+      ],
+      [
+        "`context`",
+        "top level",
+        "free text for the charm’s own use; the loader carries it and does not interpret it"
+      ],
+      [
+        "`publisher`",
+        "top level",
+        "who you are, in your own words"
+      ],
+      [
+        "`version`",
+        "top level",
+        "your release"
+      ],
+      [
+        "`scopes`",
+        "top level",
+        "the capabilities you ask for. Parsed and recorded — asking is not being granted"
+      ],
+      [
+        "`scopeReasons`",
+        "top level",
+        "one sentence per scope, **in your words**, saying why you want it — an object keyed by scope name. Shown verbatim beside the capability’s own sentence on the approval row, and again on the runtime prompt labelled *They say:*. One line, at most 200 characters, trimmed, the same set of names as `scopes`. **Required from `schemaVersion` 2**; a manifest declaring 1, or nothing, may omit it"
+      ],
+      [
+        "`endpoint`",
+        "top level",
+        "where an `endpoint` charm answers — and where MBXHub POSTs its activations. Also the fallback route for a `proc` charm with no socket connected"
+      ],
+      [
+        "`launch`",
+        "top level",
+        "what to start for a `proc` charm — its own executable, or a URL scheme. Absent is normal: an application whose own launcher starts it is still a `proc`. Read by the `launch` verb, under the policy below"
+      ],
+      [
+        "`registration`",
+        "top level",
+        "the hub’s own record for a registered charm. Written by the hub, never by you"
+      ],
+      [
+        "`placement`",
+        "per entry",
+        "where the entry appears. Read; absent means the charm’s own placement, which is `rail` unless `display` is `action-menu`. There is no top-level `placement` field in this build — a charm’s own placement comes from its `display`"
+      ],
+      [
+        "`source`",
+        "per entry",
+        "for a placement that shows pixels (`tab` / `window` / `overlay`): a path or a render source such as `spout:<sender>`. Parsed and carried; **nothing in this build fills a surface from it**"
+      ]
+    ]
+  },
+  "states": {
+    "columns": [
+      "State",
+      "`state` on the wire",
+      "Meaning"
+    ],
+    "rows": [
+      [
+        "**granted**",
+        "*(no error — the call succeeds)*",
+        "a person authorized it; your ticket carries it"
+      ],
+      [
+        "**not-granted**",
+        "`not-granted`",
+        "never asked for, or asked for and not yet answered. Asking again is the remedy"
+      ],
+      [
+        "**declined**",
+        "`declined`",
+        "a person was asked and said no, and that is remembered. Re-asking on retry does nothing; a new `version` may ask again"
+      ],
+      [
+        "**reserved**",
+        "`reserved`",
+        "policy withholds it from **every** caller, ours included, with a reason. Temporary by intent"
+      ],
+      [
+        "**banned**",
+        "`banned`",
+        "revoked for a specific charm and capability. **The only permanent refusal**"
+      ]
+    ]
+  },
+  "placements": {
+    "columns": [
+      "Placement",
+      "Support in the inspected source",
+      "Restart for MusicBee registration"
+    ],
+    "rows": [
+      [
+        "`rail`",
+        "Rendered; default charm placement",
+        "No"
+      ],
+      [
+        "`rail-menu`",
+        "Rendered; charm-level `display: action-menu`",
+        "No"
+      ],
+      [
+        "`menu`",
+        "Tools → MBXHub; click re-reads eligibility and delivers by kind",
+        "Yes"
+      ],
+      [
+        "`overlay`",
+        "HUD launch button only; requires a `launch` target",
+        "No"
+      ],
+      [
+        "`window`",
+        "Named; placement-driven rendering not implemented. Shell pop-out is separate",
+        "No"
+      ],
+      [
+        "`node` / `tab`",
+        "Named; no MusicBee surface implemented",
+        "Listed in `restartRequired`; a restart does not implement them"
+      ],
+      [
+        "`hotkey` / `status`",
+        "Named; no MusicBee surface implemented",
+        "Listed in `restartRequired`; a restart does not implement them"
+      ]
+    ]
+  },
+  "lifecycle": {
+    "columns": [
+      "Event",
+      "Registration after event",
+      "Persistent grants",
+      "Ticket"
+    ],
+    "rows": [
+      [
+        "First announcement",
+        "`pending`",
+        "None",
+        "None"
+      ],
+      [
+        "Console approval",
+        "`active`",
+        "Operator-selected requested scopes",
+        "Minted; plaintext collected once on a subsequent resolvable local announcement"
+      ],
+      [
+        "Ordinary manifest update",
+        "Unchanged",
+        "Intersected with requested scopes; new scopes ungranted",
+        "Retained"
+      ],
+      [
+        "Changed executable, launch target, placement set, or rationale for an existing scope",
+        "`active` → `pending`",
+        "Retained, subject to requested-scope pruning; unusable while pending",
+        "Cleared; console re-approval required"
+      ],
+      [
+        "Different hub identity on announcement",
+        "`pending`",
+        "Cleared",
+        "Cleared; console re-approval required"
+      ],
+      [
+        "Console revoke",
+        "`revoked`",
+        "Cleared",
+        "Cleared; announcing again does not undo revocation"
+      ],
+      [
+        "Hub restart after ticket collection",
+        "Unchanged",
+        "Unchanged",
+        "Collected ticket survives; no time-based expiry"
+      ],
+      [
+        "Hub restart before ticket collection",
+        "`active`",
+        "Unchanged",
+        "Parked plaintext lost; console approval can mint a replacement"
+      ],
+      [
+        "Console approval with an already delivered live ticket",
+        "`active`",
+        "Updated by operator",
+        "Retained; no refresh credential is issued"
+      ]
+    ]
+  },
+  "errors": {
+    "columns": [
+      "Situation",
+      "Response"
+    ],
+    "rows": [
+      [
+        "The caller is not on the machine MBXHub runs on",
+        "`403` `NOT_LOCAL` — checked first, ahead of everything below, so a remote caller is told this whatever it posted"
+      ],
+      [
+        "`Content-Type` is not `application/json`",
+        "`415` `UNSUPPORTED_MEDIA_TYPE` — parameters such as `; charset=utf-8` are fine; declaring nothing is not. This is what keeps a page the person happens to be visiting from registering on your behalf"
+      ],
+      [
+        "The install is in read-only mode",
+        "`403` `API_READ_ONLY` — the owner’s statement, made at the console, that this install is not to be changed, and registration writes a file"
+      ],
+      [
+        "A party is running, or the hub is in kiosk mode",
+        "`302` to the guest surface. These sit in front of the route rather than in it, so the answer is a redirect and not an error body. A local caller is exempt from the party redirect"
+      ],
+      [
+        "This hub already holds 500 registrations",
+        "`403` `REGISTRY_FULL` — the ceiling on distinct ids. An id **already** registered still updates at the ceiling, so a full hub cannot stop you shipping a new version"
+      ],
+      [
+        "The body is missing, is not a JSON object, or has no `id`",
+        "`400` `INVALID_REQUEST`"
+      ],
+      [
+        "The `id` is not publisher-namespaced (no dot)",
+        "`400` `INVALID_ID` — `com.example.thing`, never `thing`"
+      ],
+      [
+        "The body is larger than 64 KB",
+        "`413` `REGISTER_TOO_LARGE` — a manifest is a page of JSON, not a payload"
+      ],
+      [
+        "A scope name this build does not know",
+        "`400` `UNKNOWN_SCOPE`, naming the scope — never silently dropped"
+      ],
+      [
+        "A `scopes` entry with no sentence in `scopeReasons`, or a blank one",
+        "`400` `SCOPE_RATIONALE_MISSING` — the offending scope is named and nothing is written. **The one refusal the schema version gates:** raised only for a manifest declaring `schemaVersion` 2 or higher, because a version-1 manifest predates the field. It pays for the silence on the approval row instead, where every capability it asks for reads *no reason given*"
+      ],
+      [
+        "A sentence that is not one line, or is longer than 200 characters once trimmed",
+        "`400` `SCOPE_RATIONALE_INVALID` — the offending scope is named and nothing is written. Refused at *every* schema version: a sentence that cannot be shown on the one row it gets is not made showable by the version it arrived under"
+      ],
+      [
+        "A `scopeReasons` key naming a scope this manifest does not ask for",
+        "`400` `SCOPE_RATIONALE_UNKNOWN` — refused rather than dropped, for exactly `UNKNOWN_SCOPE`’s reason: you wrote words nobody would ever read, and you are here now to fix them. Refused at every schema version"
+      ],
+      [
+        "An `expand[]` entry writes a target after the `launch` verb — `\"action\": \"launch thing.exe\"`",
+        "`400` `INVALID_ACTION` — naming the entry. The verb is bare; the target belongs in the manifest’s top-level `launch` field, which is the string the person approves and the only one that is launched"
+      ],
+      [
+        "The `id` is claimed by another publisher",
+        "`409` `ID_CLAIMED` — the first record is unchanged"
+      ],
+      [
+        "The hub could not read its own registry (a scanner or indexer was holding the file, and one retry did not clear it)",
+        "`503` `REGISTRY_BUSY` — nothing was written; your approval, credential and `charmId` stand; announce again"
+      ]
+    ]
+  }
+}

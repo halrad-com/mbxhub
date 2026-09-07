@@ -1,8 +1,8 @@
 # Charms SDK
 
-A **charm** is an extension of MBXHub. The ones that ship with it are pages we wrote; this document is how anyone writes one — how an application announces itself, what it may ask for, how a person grants it, and what MBXHub promises not to break. It is the companion to the [REST API](https://mbxhub.com/api.html) and [llms.txt](https://mbxhub.com/llms.txt), and it describes what this build does today.
+A **charm** is an extension of MBXHub. The ones that ship with it are pages we wrote; this document is how anyone writes one — how an application announces itself, what it may ask for, how a person grants it, and what MBXHub promises not to break. It is the companion to the [REST API](https://mbxhub.com/api.html) and [llms.txt](https://mbxhub.com/llms.txt), and it describes the inspected source behavior; this does not assert that every feature has been live verified.
 
-Written against **MBXHub 0.5.5.1**. Your own hub serves the reference for the build you are actually
+Originally written against **MBXHub 0.5.5.1**. Reconciled on 2026-09-07 against implementation revision `325ed35839b3fd3f3732dde4969fb28284111182`. Your own hub serves the reference for the build you are actually
 talking to at `/docs`, and a terse machine-readable copy at `/llms.txt`.
 
 **New here? Read [the integration guide](integration-guide.md) first** — how the pieces fit and the
@@ -11,7 +11,7 @@ is in [`samples/`](../samples/).
 
 ### The one thing guaranteed regardless of everything below
 
-An application that does not register keeps working exactly as it does today, indefinitely. Registration adds; it never takes away. Everything on this page is opt-in, and everything a caller can reach without a registration stays reachable without one.
+The enumerated read endpoints and separately tested player verbs remain open to unregistered callers. Registration adds capabilities. Automation is subject to the explicit compatibility exception below; do not read this as permanence for every currently reachable route.
 
 
 ## What a charm is — three separate questions
@@ -34,22 +34,23 @@ The tests that keep them apart: if it changes what evidence can be gathered abou
 
 **A manifest with no `kind` is a `page`.** Every charm that ships today is a page, so the default is the truth rather than a convenience. An unknown `kind` is carried verbatim rather than coerced, so nothing is ever described as something it is not.
 
-**A charm with no surface at all needs nothing new.** A `proc` or an `endpoint` whose entries carry no placement registers, holds a credential, and either calls MBXHub, subscribes to its events, or declares a URL MBXHub calls. There is no `headless` kind and no flag — absence of a placement is the declaration.
+**A background process can register without action entries, but that does not hide it.** Every charm still resolves to `rail` (or `rail-menu` through `display: action-menu`). An absent `placement` is a default, not a no-surface declaration. A manifest-level way to suppress every hub surface is not implemented.
 
 ### Placements — where an entry appears
 
-| Placement | Where | In this build |
-|---|---|---|
-| `rail` | the charm rail in MBXHub’s pages — `display` selects its sub-mode | rendered; every shipping entry is one |
-| `rail-menu` | the charm rail, as a popover menu — the legacy `action-menu` | rendered |
-| `menu` | an item under MusicBee’s *Tools → MBXHub* menu; activating it delivers an event to you | rendered |
-| `node` | an entry in MusicBee’s navigator; selecting it opens the charm’s tab | named only |
-| `tab` | a MusicBee tab, per-charm opt-in | named only |
-| `window` | a desktop window of its own, when the MBXHub Shell is running | named only |
-| `overlay` | a surface inside an overlay page | **rendered as a button**: a charm declaring it with a `launch` target is a tile in the HUD's Services drawer, started by `POST /charms/{id}/launch`. Drawing *on* an overlay is still named only |
-| `hotkey` · `status` | a key chord; a background-task status line | named only |
+<!-- sdk:placements:start -->
+| Placement | Support in the inspected source | Restart for MusicBee registration |
+| --- | --- | --- |
+| `rail` | Rendered; default charm placement | No |
+| `rail-menu` | Rendered; charm-level `display: action-menu` | No |
+| `menu` | Tools → MBXHub; click re-reads eligibility and delivers by kind | Yes |
+| `overlay` | HUD launch button only; requires a `launch` target | No |
+| `window` | Named; placement-driven rendering not implemented. Shell pop-out is separate | No |
+| `node` / `tab` | Named; no MusicBee surface implemented | Listed in `restartRequired`; a restart does not implement them |
+| `hotkey` / `status` | Named; no MusicBee surface implemented | Listed in `restartRequired`; a restart does not implement them |
+<!-- sdk:placements:end -->
 
-**Named only means nothing draws them.** The values exist so the axis is closed and a manifest can declare one today; three of them are rendered by a surface in this build and the rest are not. A `window` placement is not the same thing as the Shell pop-out described under the Surfaces section below, which exists and needs no placement.
+**Named values are not necessarily implemented surfaces.** A `window` placement does not create a window; the existing Shell pop-out is a separate feature. `restartRequired` reports declared MusicBee-hosted placements, including named values that have no implementation; it is not a support-discovery response.
 
 **The `placement` field is read.** An entry that declares none takes the charm’s own placement, and that is `rail-menu` when the charm’s `display` is `action-menu` and `rail` otherwise — which is why every shipping manifest loads unchanged. Placements are compared case-insensitively, like every other manifest word, and are **never coerced**: a value this build does not know comes back verbatim and is skipped by whatever reads it, rather than being drawn somewhere else. A placement MusicBee hosts is handed to MusicBee when the plugin loads, so one requested while MusicBee is running appears at the next start — which is what `restartRequired` says on the registration response.
 
@@ -84,10 +85,11 @@ A charm is a JSON file. Almost every shipping charm is exactly this shape:
 }
 ```
 
-**The complete field set** — the loader reads all of these, whether or not every charm uses them:
+**The documented field set** — the loader reads all of these, whether or not every charm uses them:
 
+<!-- sdk:fields:start -->
 | Field | Where | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | `id` | top level | unique, stable, the charm’s identity |
 | `kind` | top level | the substrate. Parsed; absent means `page`, unknown is kept verbatim |
 | `schemaVersion` | top level | the manifest format’s version. Parsed; absent means 1 |
@@ -107,6 +109,7 @@ A charm is a JSON file. Almost every shipping charm is exactly this shape:
 | `registration` | top level | the hub’s own record for a registered charm. Written by the hub, never by you |
 | `placement` | per entry | where the entry appears. Read; absent means the charm’s own placement, which is `rail` unless `display` is `action-menu`. There is no top-level `placement` field in this build — a charm’s own placement comes from its `display` |
 | `source` | per entry | for a placement that shows pixels (`tab` / `window` / `overlay`): a path or a render source such as `spout:<sender>`. Parsed and carried; **nothing in this build fills a surface from it** |
+<!-- sdk:fields:end -->
 
 Top-level `icon` / `action` / `display` / `msg` are the single-action shorthand; `expand[]` is the list. A charm may use either.
 
@@ -122,6 +125,40 @@ Top-level `icon` / `action` / `display` / `msg` are the single-action shorthand;
 **Unknown `display` values fall back to a plain button.** That is a documented rule of the loader, not an accident.
 
 > **The icon contract:** an icon is either plain text or one inert `<svg>`. Text with no `<` in it passes through; a single `<svg>` element carrying nothing that executes passes through; anything else is HTML-encoded, so it renders inert and visible rather than vanishing. You see the mistake instead of a blank button.
+
+### Minimal manifest shapes
+
+These examples show manifest syntax; they do not install pages, start a service, or obtain approval. Use the [integration walkthrough](integration-guide.md) and [working samples](../samples/) for executable examples. Registration is local for every kind. Top-level `placement` is not supported; declare non-rail entries in `expand`.
+
+**Hosted page:** place the page at the declared path. Absent entry placement inherits the rail.
+
+```json
+{"id":"com.example.page","schemaVersion":2,"kind":"page","label":"Example page","publisher":"Example","version":"1.0","scopes":[],"scopeReasons":{},"expand":[{"label":"Open","action":"webapp /pages/example.html","display":"both"}]}
+```
+
+**Background process:** no launch action and no application window required. This registers successfully as a process shape, but it still has the hub's default rail placement; this is not an invisibility declaration.
+
+```json
+{"id":"com.example.worker","schemaVersion":2,"kind":"proc","label":"Worker","publisher":"Example","version":"1.0","scopes":[],"scopeReasons":{},"expand":[]}
+```
+
+**Menu-launched process:** replace the path with the executable making the registration request. The bare `launch` action reads the top-level target.
+
+```json
+{"id":"com.example.app","schemaVersion":2,"kind":"proc","label":"Example app","publisher":"Example","version":"1.0","scopes":[],"scopeReasons":{},"launch":"C:\\Example\\App.exe","expand":[{"label":"Open","placement":"menu","action":"launch"}]}
+```
+
+**Endpoint:** a local registrar announces this service's private address. A menu click delivers the activation to its endpoint; the remote service cannot use the local ticket from its own machine. The blank action adds no launch operation.
+
+```json
+{"id":"com.example.service","schemaVersion":2,"kind":"endpoint","label":"Example service","publisher":"Example","version":"1.0","scopes":[],"scopeReasons":{},"endpoint":"http://192.168.1.50:9000/activated","expand":[{"label":"Activate","placement":"menu","action":""}]}
+```
+
+**HUD launch tile:** this is a locally installed scheme-launch manifest. The scheme handler must exist and pass launch policy. No registration block means file-installed provenance; if registered instead, it must be approved.
+
+```json
+{"id":"com.example.hud","schemaVersion":2,"kind":"proc","label":"Example HUD app","publisher":"Example","version":"1.0","scopes":[],"scopeReasons":{},"launch":"steam://run/4813240","expand":[{"label":"Start","placement":"overlay","action":"launch"}]}
+```
 
 ## What is promised, and what is merely true
 
@@ -179,7 +216,7 @@ Content-Type: application/json
 - **`restartRequired` lists what is registered but not yet on screen.** Those are the placements MusicBee itself hosts — `menu`, `node`, `tab`, `hotkey`, `status` — which MusicBee is handed when the plugin loads, so they appear at its **next start** rather than now. It is on every `200`, `[]` included, and absent from a refusal, where nothing was registered. Names come back spelled as your manifest spelled them, deduplicated case-insensitively with the first spelling kept. **It is not a diff:** re-announcing the same entry still lists it, because the answer describes the MusicBee session that is answering, not what changed since last time. A placement nothing hosts — `rail`, `rail-menu`, `window`, `overlay`, or a value this build does not know — is not listed, because claiming it waits on MusicBee would be a promise that never comes true.
 - **Registration is performed locally.** `POST /charms/register` is accepted only from the machine MBXHub runs on. This is not a policy that might loosen: a hub that could be enrolled from across the network is a hub anyone on the network can enroll themselves into.
 - **That is a rule about who announces you, not about where your code runs.** An `endpoint` charm answers from somewhere else by definition, and registers through something local acting on its behalf — its installer, its launcher, or a small local agent. What it *declares* is the address MBXHub calls; what must be *local* is the announcement. An application with nothing local at all is not a registered charm; it is an unregistered caller — which keeps working, permanently.
-- **An `id` is claimed by whoever registers it first on that hub.** A later registration of the same `id` from a different publisher identity is refused (`ID_CLAIMED`) rather than allowed to take it over, and the first record is unchanged. A `pending` id is not yet claimed, and a revoked one stays claimed. *(Releasing a claim from the Charm Manager is designed, not built — no verb does it yet.)*
+- **An `id` is claimed when its registration is approved on that hub.** A later registration of the same `id` from a different publisher identity is refused (`ID_CLAIMED`) rather than allowed to take it over, and the first record is unchanged. A `pending` id is not yet claimed, and a revoked one stays claimed. *(Releasing a claim from the Charm Manager is designed, not built — no verb does it yet.)*
 - **An `id` must be publisher-namespaced**, and that is enforced: at least one dot, no path separators, no dot-segments, 128 characters at most, and letters, digits, `.`, `-` and `_` only. Choose a reverse-domain name you control and this never concerns you.
 
 ### Reading your record back
@@ -198,8 +235,9 @@ It is ungated and read-only, because it reports a decision already made and chan
 
 A refusal is always a stated code, never a silent drop.
 
+<!-- sdk:errors:start -->
 | Situation | Response |
-|---|---|
+| --- | --- |
 | The caller is not on the machine MBXHub runs on | `403` `NOT_LOCAL` — checked first, ahead of everything below, so a remote caller is told this whatever it posted |
 | `Content-Type` is not `application/json` | `415` `UNSUPPORTED_MEDIA_TYPE` — parameters such as `; charset=utf-8` are fine; declaring nothing is not. This is what keeps a page the person happens to be visiting from registering on your behalf |
 | The install is in read-only mode | `403` `API_READ_ONLY` — the owner’s statement, made at the console, that this install is not to be changed, and registration writes a file |
@@ -215,6 +253,7 @@ A refusal is always a stated code, never a silent drop.
 | An `expand[]` entry writes a target after the `launch` verb — `"action": "launch thing.exe"` | `400` `INVALID_ACTION` — naming the entry. The verb is bare; the target belongs in the manifest’s top-level `launch` field, which is the string the person approves and the only one that is launched |
 | The `id` is claimed by another publisher | `409` `ID_CLAIMED` — the first record is unchanged |
 | The hub could not read its own registry (a scanner or indexer was holding the file, and one retry did not clear it) | `503` `REGISTRY_BUSY` — nothing was written; your approval, credential and `charmId` stand; announce again |
+<!-- sdk:errors:end -->
 
 ### Announcing again, after a person approves you
 
@@ -242,19 +281,37 @@ The rationale trigger compares **only scopes the record already carried**: askin
 
 The placement set is compared case-insensitively as a *set*, so order, duplicates, labels, icons and actions move nothing and an ordinary version bump is untouched: adding a second `rail` entry to a charm that is already a bar button changes no set, and adding a `menu` entry to a charm that declared only `rail` entries does. Removal counts too — the row said one thing and now says another. Clearing the ticket is part of the disposition rather than a consequence of it: the old credential resolves to nothing, so a gated call presenting it answers `401`, and a charm cannot move its own launch gate and keep the yes. A registration whose caller could not be resolved is not an observation at all, so it can neither move that gate nor erase what is on the record.
 
-Until then, `pending` means registered and not yet approved: the record is on file, nothing is granted, the endpoints open to you are exactly the ones open to a caller that never registered, and nothing of yours is drawn on a charm surface.
+A `pending` registration has no usable ticket and receives no privileged access. First registration has no grants; approval-invalidating updates can retain stored grants for re-approval, as the lifecycle table specifies. Rail surfaces hide pending registrations; a menu built earlier may remain visible but refuses activation.
+
+### Registration and credential lifecycle
+
+<!-- sdk:lifecycle:start -->
+| Event | Registration after event | Persistent grants | Ticket |
+| --- | --- | --- | --- |
+| First announcement | `pending` | None | None |
+| Console approval | `active` | Operator-selected requested scopes | Minted; plaintext collected once on a subsequent resolvable local announcement |
+| Ordinary manifest update | Unchanged | Intersected with requested scopes; new scopes ungranted | Retained |
+| Changed executable, launch target, placement set, or rationale for an existing scope | `active` → `pending` | Retained, subject to requested-scope pruning; unusable while pending | Cleared; console re-approval required |
+| Different hub identity on announcement | `pending` | Cleared | Cleared; console re-approval required |
+| Console revoke | `revoked` | Cleared | Cleared; announcing again does not undo revocation |
+| Hub restart after ticket collection | Unchanged | Unchanged | Collected ticket survives; no time-based expiry |
+| Hub restart before ticket collection | `active` | Unchanged | Parked plaintext lost; console approval can mint a replacement |
+| Console approval with an already delivered live ticket | `active` | Updated by operator | Retained; no refresh credential is issued |
+<!-- sdk:lifecycle:end -->
 
 ## Permissions — what you may ask for
 
 A capability is either **granted** or it is not, and when it is not there are **four distinct reasons** — never one undifferentiated no. These are the words used everywhere: here, on the wire, and in what a person is shown.
 
+<!-- sdk:states:start -->
 | State | `state` on the wire | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | **granted** | *(no error — the call succeeds)* | a person authorized it; your ticket carries it |
-| **not issued** | `not-granted` | never asked for, or asked for and not yet answered. Asking again is the remedy |
+| **not-granted** | `not-granted` | never asked for, or asked for and not yet answered. Asking again is the remedy |
 | **declined** | `declined` | a person was asked and said no, and that is remembered. Re-asking on retry does nothing; a new `version` may ask again |
 | **reserved** | `reserved` | policy withholds it from **every** caller, ours included, with a reason. Temporary by intent |
 | **banned** | `banned` | revoked for a specific charm and capability. **The only permanent refusal** |
+<!-- sdk:states:end -->
 
 **Why `declined` is its own state.** The two call for opposite behavior from you: `not-granted` means ask; `declined` means a person has already answered and asking again is noise they will resent. An integration that cannot tell them apart either nags or gives up, and both are wrong. The same reasoning separates `reserved` — *not available to anyone yet* — from `banned`, which is the only one that means no and stays no.
 
@@ -304,8 +361,8 @@ Split against what they actually do, because “automation” is too coarse for 
 - The ticket is **opaque**, 32 random bytes, and travels in the **`X-MBXHub-Ticket`** header. Never in a query string — those end up in logs and referrers; one there is refused even when valid.
 - It is checked **once, at dispatch**. Existing endpoints are not rewritten to know about it.
 - **No ticket means today’s behavior.** That is the compatibility door.
-- **It does not expire, and there is nothing to refresh.** A ticket ends in exactly two ways: a person revokes you, or the hub’s own identity is reset. Either way your next privileged call answers `401`, and the remedy is the one you already implement — register again. Do not build a refresh loop; there is nothing for it to do.
-- **You need not drop the header to recover.** A ticket, valid or stale, is looked at only when the route you called is gated. On the open surface — which includes `POST /charms/register` — a stale ticket costs you nothing and is not even resolved. Holding a ticket never makes a route harder to reach than it is without one.
+- **There is no time-based expiry or refresh endpoint.** Revocation, a different hub identity, and approval-invalidating updates clear tickets. Follow the lifecycle table above: announce locally and obtain console re-approval when required. Re-announcing alone does not undo revocation.
+- **You need not drop the header to recover.** A ticket, valid or stale, is looked at only when the route you called is gated. On the open surface — which includes `POST /charms/register` — a stale ticket costs you nothing and is not even resolved. On ungated routes, holding a ticket does not change access. On gated routes, omitting the ticket retains legacy behavior; ticket-based refusals do not restrict that separate anonymous path.
 - **It is bound to the locality it was issued in.** A ticket is refused from a non-local address regardless of validity. A charm whose code answers remotely therefore cannot present one from its remote half: its privileged reach is what its local half does on its behalf, and everything else it reads is the permanently open surface, which needs no ticket.
 
 | Situation | Response |
@@ -343,7 +400,7 @@ It is raised only for a charm whose tier is `pinned` or `unsigned` — a signed-
 
 **Inside MBXHub’s own pages is where a charm renders by default.** When the MBXHub Shell is running, a charm can also be popped out to a desktop window of its own — that needs no MusicBee surface and no restart. Without the Shell there is no window to pop out to and the charm stays inside the pages; a plugin-only install deliberately shows no pop-out.
 
-**A registration is not on a surface until a person approves it.** Announcing yourself puts a manifest in the folder the charm surfaces read, so without this rule registering would put a button on somebody’s bar that nobody said yes to. A registration that is *pending* or *revoked* is therefore not rendered — not on the dashboard bar, not on the Charm Bar rail, not as a window — while the record itself is untouched and still listed in the Charm Manager, which is where a person sees what is waiting on them. A manifest carrying no registration block at all renders as it always did; absence means *not a registration*, never *pending*. **Approval takes effect without a restart:** the surfaces re-read the folder when the registry says something was written, so approving or revoking reaches the screen on the next render.
+**A registration is not on a surface until a person approves it.** Announcing yourself puts a manifest in the folder the charm surfaces read, so without this rule registering would put a button on somebody’s bar that nobody said yes to. A registration that is *pending* or *revoked* is therefore not rendered — not on the dashboard bar, not on the Charm Bar rail, not as a window — while the record itself is untouched and still listed in the Charm Manager, which is where a person sees what is waiting on them. A manifest carrying no registration block at all renders as it always did; absence means *not a registration*, never *pending*. **Rail approval takes effect on the next render without a restart.** MusicBee menus are built at startup; revoked items can remain visible until restart, but their clicks are refused.
 
 **A framed charm’s page is not isolated from the page that frames it, and that is a convention rather than a boundary.** A charm rendered inside one of our pages is loaded in an ordinary un-sandboxed frame: what stops it reaching a privileged action is the host page’s fixed list of open verbs — a host page performs only those for a page it frames, and anything else is refused with one log line naming the verb — not the browser. That is honest for the pages we ship and for a page somebody with access to the machine dropped into their own charms folder, but it is **not** a boundary we can offer for a page we did not author. Treat the frame as a rendering arrangement between parties who already trust each other, and read the enforcement section for the boundary that is real: the dispatch check, which no page can talk its way past, because no page holds a ticket.
 
@@ -373,7 +430,7 @@ and `409 LAUNCH_NOT_STARTED` when the plan was allowed and the process did not s
 
 ### The `menu` placement
 
-**An approved charm’s `menu` entries appear under *Tools → MBXHub* at MusicBee’s next start**, one submenu per charm, named after the charm’s `label` — its `id` when the label is blank. Only an `active` registration gets one, and a manifest with no `registration` block gets nothing here. That is the opposite reading from what renders on the charm bar, deliberately: a button on the bar is something a person can scroll past, an item in MusicBee’s own chrome is not.
+**Eligible `menu` entries appear under Tools → MBXHub at MusicBee’s next start**, grouped by charm label (or id if blank). A registration, if present, must be `active`. A file-installed manifest with no registration block is also eligible. The same eligibility rule applies to menu clicks, HUD services, and launching; an unregistered file can launch a URL scheme under policy, but cannot launch an executable because it has no observed image.
 
 **The status is re-checked at the click**, against the charm as it is on disk at that moment, so a charm revoked after the menu was built is refused when its item is clicked and the reason is logged. MusicBee has no API for removing a menu item, so the item stays visible until MusicBee next starts — what is gated is the click, not the drawing. A click that passes delivers the activation by your kind, and starts your `launch` target as well when the entry’s action is the bare `launch` verb.
 
@@ -394,7 +451,7 @@ and `409 LAUNCH_NOT_STARTED` when the plan was allowed and the process did not s
 
 ### Launching — what a `launch` target may start
 
-A `menu` entry whose action is the bare verb `launch` starts the manifest’s `launch` field when a person clicks it. The target is always that field — never anything in the entry, never anything a caller supplies — so the string the person approved is the string that runs, and only an `active` charm launches at all. Two kinds of target exist, and they are judged differently.
+A `menu` entry whose action is the bare verb `launch` starts the manifest’s `launch` field when a person clicks it. The target is always that field — never anything in the entry, never anything a caller supplies — so the string the person approved is the string that runs, and a registration, if present, must be `active`. Two kinds of target exist, and they are judged differently.
 
 **An executable is judged by identity.** It must be the image the hub watched register — the same file after path normalization, compared case-insensitively — so a charm may launch itself and nothing else, and a sibling file in a folder it can already write to is not itself. Arguments after the image are passed through verbatim. No list applies to an executable.
 
@@ -425,7 +482,7 @@ Signature and catalog status decide **how loudly you have to ask**, never **what
 **Why `pinned` is not reachable, stated rather than hidden.** The operating system check this build relies on reports one state for “the signature does not chain to a trusted root” whether the cause is a self-signed certificate, an expired one, or a **tampered image** — and a patched binary must never be quieter than an honest unsigned one. So until the check can tell those apart, every non-chaining signature tiers as `unsigned`. A self-signed publisher is exactly as loud as an unsigned one today, and reaches quiet only through a certificate that chains.
 
 - Being signed and known buys **quiet**. Being unknown costs **interruption** — prompts, a visible tier — never function.
-- **Refusal is reserved for banned.** Absent a ban the answer is yes-with-friction.
+- **Tier does not grant a capability.** Missing grants, declines, reservations and bans still refuse the call; a quiet tier bypasses none of them.
 - An unsigned extension is a tier, not an error. Distribution by any channel stays viable.
 
 **Certificate renewal must not cost you a tier.** Continuity is judged on the certificate subject, not the key: a renewed certificate with the same subject keeps your tier, and a change of subject is treated as a new publisher and asks the person once — one re-consent, not a drop to `unsigned`. *The successor mechanism for a subject change is not in this build.*
@@ -436,12 +493,12 @@ Signature and catalog status decide **how loudly you have to ask**, never **what
 
 ## License grants
 
-A signed grant `{publisher, class, expiry}` may unlock a license-gated class. Verification is offline, at registration, and re-checked on every start; a verified grant is recorded on the registration as a *licensed* class and the dispatch check honors it.
+**Verification is implemented, but no verification key ships in the inspected build: grants fail closed with unknown keyId.** A signed grant `{publisher, class, expiry}` may unlock a license-gated class once an issuing arrangement and verification key are available. Verification is offline, at registration, and re-checked on every start; a verified grant is recorded on the registration as a *licensed* class and the dispatch check honors it.
 
 - **`publisher` is the string we signed.** At issue it is bound to your certificate subject, so the grant and your signature name the same party. There is no separate registry of publishers to be in.
 - **Grants bind to the publisher**, not to an installation. Resetting or reinstalling MBXHub does not cost you a license you hold.
 - **A tampered or expired grant fails closed for that class only.** Everything else continues to work.
-- **The local clock decides expiry.** Verification is ECDSA P-256 against a public key compiled into the build and selected by `keyId` — no new dependency, and **no network call, ever**. A disconnected machine never stalls, and we never phone home to check. A wrong clock fails closed for that class only, the same as expiry, which is checked at every decision rather than once at the write.
+- **The local clock decides expiry.** Verification is ECDSA P-256 against a public key compiled into the build and selected by `keyId` — no new dependency, and **no network call, ever**. A disconnected machine never stalls, and we never phone home to check. Expiry is checked at every decision. A clock ahead can expire a grant early; a clock behind can prolong acceptance. Local-clock verification does not detect clock rollback.
 - **The wire shape.** `base64url(payloadJson) "." base64url(signature)`. The payload is `{ "publisher", "class", "expiry" (ISO-8601 UTC), "keyId" }` and is verified over the **bytes exactly as sent** — never a re-serialization, because two serializers disagree on whitespace and a grant that verifies on one build and fails on the next would look like tampering. The signature is the raw IEEE P1363 form — `r` followed by `s`, 64 bytes for P-256 — **not DER**.
 - **A license is outranked.** A ban, a decline, a reservation and a revoked record each outrank a valid license, and a license never loosens the ticket rules.
 - **Our signing key will rotate, and your grant survives it.** Every grant names the key that signed it, and a build carries the public halves of the current key **and its predecessors**. A grant issued under a retired key keeps verifying for as long as it has not expired; you are never asked to obtain a new grant because *we* changed a key.
@@ -460,61 +517,16 @@ Named separately, because merging any two of them is how a format rots.
 
 **What `apiVersion` is intended to promise:** under a fixed value we will not remove a field, change a response type, or retire a route; we may add. A change gets a version bump and notice two releases ahead. It is deliberately not our product version, and it is the one to pin against. That promise is proposed rather than committed — the one commitment on this page is the open read surface, and it says so on purpose.
 
-## What is checked
+## Verification and limits
 
-A specification that cannot be tested is a wish. The charms that ship with MBXHub are the regression corpus — written before any of this existed, and never edited to make a test pass. Each promise below is checked on every run:
+The documentation reconciliation ran 270 targeted Release tests, all passing, covering placement resolution (including the 18-manifest, 32-entry seeded corpus), menu eligibility, launching, runtime prompts, registry transitions, callbacks, dispatch enforcement, and refusal vocabulary. These are automated checks of the implementation, not proof of deployment or end-to-end operation on your installation.
 
-| Promise | What is checked |
-|---|---|
-| The one commitment | An existing integration runs unchanged against a build with registration in it, and the ten frozen endpoints answer as before — from an unregistered caller and from a registered one alike. This is the regression that matters most |
-| `kind` and `schemaVersion` absent | Every shipping charm loads unchanged on a build that knows both fields; each is treated as a `page` and as a version 1 manifest; a declared kind wins, and an unknown one is kept verbatim rather than coerced |
-| Icons cannot carry markup that runs | An icon that is neither plain text nor an inert `<svg>` renders encoded — on the button, on `expand[]` entries, and on an `action-menu` trigger and its items alike |
-| Finding the hub | The ladder is the even ports 8080–8098, and `service` — not `apiVersion` — is what identifies us; `apiVersion` moves on its own clock |
-| Registration is idempotent | Registering twice with one `id` and unchanged content yields one `charmId` and one record, including under concurrent callers |
-| An update keeps the hub’s half | A changed manifest replaces the manifest half and keeps the `charmId`, first-registered time, status and grants; a new scope is not silently granted, and a dropped scope is released |
-| Pending is not degraded | A pending caller’s responses are identical to an unregistered caller’s, asserted against the same frozen rows |
-| Refusals are named, never silent | Each refusal code answers on its own, a refusal writes nothing, and it still carries `apiVersion` |
-| The registry ceiling | A new `id` is refused at 500; an `id` already on file still updates at the ceiling; charms we ship do not count toward it |
-| Reading a record withholds the hub’s half | `GET /charms/{id}` returns identity, status and scopes and never the observed image path or its digest under any name; an unknown or impossible id is a `404` |
-| Registration is local only | A registration from a non-local address is refused before its body is judged, and nothing is written |
-| An `id` is claimed | A second registration of an existing `id` from a different publisher is refused and the first record is unchanged; a revoked `id` stays claimed by its publisher |
-| An entry may not carry a launch target | An `expand[]` entry written as `launch <target>` is refused `400 INVALID_ACTION` naming the entry, and nothing is written; the match is on the first token, so `launcher` is a different verb |
-| The ticket is withheld rather than mis-delivered | A registration whose caller cannot be resolved answers `active` with `ticketWithheld` and no `ticket`; the plaintext stays parked, the next resolvable announcement delivers it exactly once, and that lookup writes no image, digest or tier |
-| Five things take an approval back | A different executable, a different `launch` target, a different placement set and a reworded `scopeReasons` sentence for a scope already asked for each return an `active` record to `pending` and clear its ticket, with the grants kept; a record approved under a different hub install does the same and releases the grants; an ordinary version bump — new labels, icons, actions, order — moves nothing. The count of triggers is read from the source itself, so a sixth cannot land unnamed |
-| Your sentence is carried and shown as you wrote it | `scopeReasons` survives the round trip through the record and reaches the approval row and the runtime prompt unaltered, `&` and `<` included; a record with no `scopeReasons` at all still renders, falling back to the capability’s own sentence and saying *no reason given*; a missing, blank, multi-line, over-length or unrequested sentence is refused by name with nothing written, and a version-1 manifest may omit them but is still held to any sentence it does send |
-| Partial grant | Ask four, granted three: `grantedScopes` is exactly those three and the fourth returns `403 not-granted` |
-| An unknown scope is refused by name | Requesting a scope the build does not know returns `400` naming it, and nothing is registered |
-| The capability list is readable | `GET /charms/capabilities` lists every scope the build knows, each with maturity and reserved status, and every name it lists is accepted at registration |
-| Reserved is refused at the source | Approving a reserved scope is refused and writes nothing; only a requested capability is offered for approval |
-| Only the unknown are prompted | A signed-and-known charm never raises a runtime prompt; `pinned` and `unsigned` do; a `page` or `endpoint` charm is never prompted over, whatever is stamped on it; only outward-acting capabilities prompt at all |
-| The prompt is local-only and attributable | A grant prompt from a non-local caller is refused with the reason; one with no nonce is refused; an ordinary notification from the network still works |
-| A *Trust* click cannot walk past a refusal | After *Trust* the whole decision runs again from scratch; a banned, reserved or declined capability stays refused |
-| Answers are remembered as designed | *Trust* is remembered for the charm and target it was given for, for the process lifetime, and spreads no further; *Not now* silences that capability for the session across every target; nothing is recorded against an anonymous caller |
-| Four states on the wire | `not-granted`, `declined`, `reserved` and `banned` are distinguishable by `state`, each naming the capability, and a refusal never carries a state it has no business naming |
-| Prompts off changes the noise, not the answer | With the switch off nothing reaches a person, the refusal is the one *Not now* produces, nothing is granted and nothing is declined; the absence expires on its cooldown and never overwrites an answer a person already gave |
-| Console-only settings are not writable | A console-only key sent to the config route is refused by name and nothing is written; pairing one with an ordinary key writes neither; none of them is drawn on the web page |
-| An unapproved registration is not rendered | A `pending` or `revoked` registration is absent from the one list every charm surface reads while remaining on disk and on the record; a manifest with no registration block renders as it always did |
-| An approval reaches the surface without a restart | Approving puts the charm on the list the surfaces read on the next render, and revoking takes it off, with no plugin restart |
-| A menu click is gated at the click | Only an `active` registration is asked for a menu item, and a charm revoked after the menu was built is refused when its item is clicked, with the reason logged |
-| An activation reaches the charm | The event goes by the route the kind has — the bound socket, the declared endpoint, or the frame — and a bound socket receives its own charm’s activations whatever it subscribed to; the endpoint POST follows no redirect, reads no body and is bounded at 2000 ms |
-| Launch — deny first, deny wins | A scheme on the deny-list is refused under every allow-list, the wildcard and an entry naming it included, and the refusal names the deny-list rather than the setting |
-| Launch — the wildcard ships, a list narrows | A fresh settings object carries `*`, and no list at all decides as `*` does; a list of names allows only what it names, case and a trailing `:` notwithstanding; an empty list allows no scheme and leaves executables alone |
-| Launch — console-only, and said before the yes | `charmLaunchAllowedSchemes` is not drawn on the web settings page and is refused by the write gate with its stored value unchanged; a scheme off the list reads as refused on the Charm Manager row before approval |
-| The ticket is header-only, and local | The ticket works in `X-MBXHub-Ticket` and is rejected in a query string even beside a good header; a valid ticket from a non-local address is refused |
-| A stale ticket costs nothing on the open surface | With a revoked or foreign ticket in the header, an ungated route — `POST /charms/register` included — answers exactly as it does with no header, and the registry is not consulted |
-| Revocation is survivable | After revocation the next privileged call returns `401` and the record survives; the extension keeps running |
-| Hosted pages are gated | A host page performs only the open verbs for a page it frames; anything else is refused with one log line naming the verb |
-| Pages are not prompted over | A `page` charm is not placed on the tier ladder and generates no trust prompt, signed or not. This is a no-change check: it fails if registration makes an included page noisier than it is now |
-| A tier is not stated before it is known | A registration’s `tier` is absent rather than guessed while nothing has observed an image |
-| A license fails closed | A modified grant, an expired one, a wrong clock and an unknown key each leave that class locked and everything else working; expiry is checked at every decision, not at the write; a retired key still verifies a grant issued under it; a ban, a decline, a reservation and a revoked record each outrank a license |
-| A license is signed over the bytes as sent | Whitespace inside the payload is preserved and verified as-is, and the signature is P1363 `r‖s` |
+Still outstanding: a real MusicBee Tools-menu click, a launch on an install with a narrowed allow-list, page activation forwarding in a browser, and long wall-clock ticket survival. The internal implementation ledger owns the detailed evidence inventory.
 
-**Not checked, because it is not in this build:** the `placement` field’s absent and unknown behavior asserted across the whole shipping corpus, a single-action shorthand reaching a menu item, delivery for the MusicBee-side doors other than the menu, a renewed certificate keeping its tier, and what a person is shown about an `endpoint` charm’s reach. Each of those is described above as designed rather than done, and none of them is promised on a date.
-
-**Built but not yet walked, which is a different thing and is worth saying separately:** the click on a real MusicBee *Tools* menu, and a launch attempted on an install whose allow-list has been narrowed. The decision paths behind both are pure and are pinned above; what has not been exercised is the last step that starts a process.
+Top-level placement shorthand, source-driven rendering, MusicBee doors other than the menu, no-surface declaration, certificate-renewal continuity, and endpoint-reach presentation remain unimplemented. The existing Shell pop-out and HUD launch tile do not imply those features exist.
 
 ## Telling us it is wrong
 
 The most useful thing you can send back is the endpoint your integration reads that is not on the frozen list, or the clause here you would not implement. A clause nobody adopts is worse than a missing one, because it looks like a contract.
 
-Charms SDK — September 5, 2026. Describes the behavior of the current MBXHub build; anything marked *not in this build* is designed and not yet shipped, with no date attached. See also [the REST API](https://mbxhub.com/api.html) and [Charms](/features.html#charms).
+Charms SDK — reconciled September 7, 2026. Describes the inspected implementation revision above; anything marked *not in this build* is designed and not yet shipped, with no date attached. See also [the REST API](https://mbxhub.com/api.html) and [Charms](/features.html#charms).
