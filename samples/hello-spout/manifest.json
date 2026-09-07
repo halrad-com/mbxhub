@@ -1,0 +1,18 @@
+{
+  "id": "com.halrad.samples.hello-spout",
+  "schemaVersion": 2,
+  "kind": "proc",
+  "label": "Hello Spout",
+  "publisher": "HALRAD LLC (sample)",
+  "version": "0.1.0",
+  "icon": "📺",
+  "launch": "(filled in at startup: this executable's own path, plus --launched)",
+  "expand": [
+    {
+      "label": "Hello Spout",
+      "placement": "menu",
+      "action": "launch",
+      "msg": "Starting Hello Spout"
+    }
+  ]
+}

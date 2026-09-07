@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hello App</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body {
+    height: 100%; margin: 0;
+    background: #0f1216; color: #e6e8ea;
+    font: 16px/1.6 "Segoe UI", system-ui, sans-serif;
+    overflow: hidden;
+  }
+  .stage {
+    height: 100%; box-sizing: border-box;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 22px; padding: 5vh 8vw; text-align: center;
+  }
+  /* Vector, and it carries its own animation — so it is sized as a fraction of the window
+     and stays sharp at any size. That is why this app hosts a page instead of drawing. */
+  .mark { width: min(42vh, 52vw); height: min(42vh, 52vw); }
+  p { max-width: 62ch; margin: 0; color: #9aa1a8; }
+  .lede { color: #e6e8ea; font-size: 1.2rem; }
+  .by { font-size: .85rem; color: #6c757d; letter-spacing: .04em; }
+  .by b { color: #3FC9D6; font-weight: 600; }
+
+  .panel { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center; }
+  button {
+    font: inherit; color: #0f1216; background: #3FC9D6;
+    border: 0; border-radius: 6px; padding: 9px 16px; cursor: pointer;
+  }
+  button:disabled { opacity: .45; cursor: default; }
+  label.tick { color: #9aa1a8; display: flex; align-items: center; gap: 7px; cursor: pointer; }
+  #status { min-height: 1.6em; font-size: .95rem; }
+  #status.working { color: #9aa1a8; }
+  #status.yes { color: #3FC9D6; }
+  #status.no  { color: #e0796f; }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <img class="mark" src="assets/mbxhub-animated.svg" alt="MBXHub">
+
+    <p class="lede">This window was started by MBXHub.</p>
+
+    <p>A charm declared a <code>launch</code> target, a person approved it on the Charm Manager
+       row, and pressing the entry handed that exact string to Windows.</p>
+
+    <div class="panel">
+      <button id="start">Start MusicBee</button>
+      <label class="tick">
+        <input type="checkbox" id="min" checked>
+        minimized
+      </label>
+    </div>
+
+    <p id="status"></p>
+
+    <p class="by">started by <b>MBXHub</b> · <span id="how">run directly</span> · <span id="mode"></span></p>
+  </div>
+
+<script>
+(function () {
+  'use strict';
+
+  var q = new URLSearchParams(location.search);
+  if (q.get('how')) document.getElementById('how').textContent = q.get('how');
+  document.getElementById('mode').textContent =
+    q.get('mode') === 'launch' ? 'load with launch' : 'delay load';
+
+  var status = document.getElementById('status');
+  var button = document.getElementById('start');
+
+  // THE PAGE ASKS; THE PROCESS ACTS. POST /meta/app/start is state-changing, so a
+  // browser-supplied Origin must be LAN-scoped — and a page loaded from disk sends
+  // "Origin: null", which is refused. A native caller sends none and is allowed. So the
+  // button posts a message to the host application, which makes the call.
+  button.addEventListener('click', function () {
+    button.disabled = true;
+    window.chrome.webview.postMessage(
+      document.getElementById('min').checked ? 'start-musicbee-minimized' : 'start-musicbee');
+  });
+
+  window.chrome.webview.addEventListener('message', function (e) {
+    var m = e.data || {};
+    status.className = m.state || '';
+    status.textContent = m.text || '';
+    if (m.state !== 'working') button.disabled = false;
+  });
+})();
+</script>
+
+</body>
+</html>

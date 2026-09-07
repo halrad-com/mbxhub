@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>hello-app</AssemblyName>
+    <RootNamespace>HelloApp</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+  </PropertyGroup>
+
+  <!-- One package, and the same version MBXHub's own Shell pins. WebView2 is what
+       lets the window show the real brand mark: it is a vector carrying its own CSS
+       animation, so hosting the asset beats redrawing an approximation of it, and it
+       stays sharp at any window size. The runtime ships with Edge on Windows 10+. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4078.44" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="manifest.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="app.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <!-- Link keeps the folder: without it a wildcard copy flattens into the output root
+         and app.html's assets/… reference breaks with nothing to show for it. -->
+    <None Update="assets\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\%(Filename)%(Extension)</Link>
+    </None>
+  </ItemGroup>
+
+</Project>

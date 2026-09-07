@@ -1,0 +1,17 @@
+{
+  "id": "com.halrad.samples.hello-app",
+  "kind": "proc",
+  "label": "Hello App",
+  "publisher": "HALRAD LLC (sample)",
+  "version": "0.1.0",
+  "icon": "🟦",
+  "launch": "(filled in at startup: this executable's own path, plus --launched)",
+  "expand": [
+    {
+      "label": "Hello App",
+      "placement": "menu",
+      "action": "launch",
+      "msg": "Starting Hello App"
+    }
+  ]
+}

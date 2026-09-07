@@ -1,0 +1,11 @@
+# Build output. The samples are sources: what a person clones should be what a person
+# reads, and a committed bin\ is a stale binary somebody eventually runs by accident.
+bin/
+obj/
+build/
+*.user
+*.suo
+.vs/
+
+# Agent scratch, not part of the repository's subject.
+.claude/

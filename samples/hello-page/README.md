@@ -62,14 +62,16 @@ For the first two install cases, cheapest first:
 
 With the folder open:
 
-With the folder open:
-
 ```
-manifest.json    ->  <hub data>\charms\com.halrad.samples.hello-page.json
+com.halrad.samples.hello-page.json  ->  <hub data>\charms\
 hello-page.html  ->  <hub data>\pages\hello-page.html
 ```
 
 Reload the dashboard. *Hello Page* is on the charm bar; click it and the page opens in place.
+
+**The charm file is named after its id, and that is a rule rather than a habit.** The registry finds
+a charm by filename — `id + ".json"` — so a file called `manifest.json` cannot be looked up by id,
+and every sample calling its file the same thing means copying two into one folder overwrites one.
 
 Files in `pages\` are served **instead of** the copies built into the hub, so use a name of your own
 — a file dropped there under an existing page's name shadows that page with no warning anywhere.
