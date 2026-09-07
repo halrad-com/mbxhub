@@ -22,6 +22,25 @@ if(NOT EXISTS ${SPOUT_ROOT}/SpoutGL/SpoutUtils.cpp)
         "repos checked out side by side. Clone mbxspout beside mbxhub, or pass "
         "-DSPOUT_ROOT=<path-to>/Spout2/SPOUTSDK.")
 endif()
+# WHERE mbxspout.h IS. Same story as SPOUT_ROOT above and the same fix: this sample used to
+# live in the mbxspout repo, where ../../include reached the contract. It moved to mbxhub in
+# 7c9a085 and that relative path came with it, pointing at an mbxhub/include that does not
+# exist - so the sample has not been buildable as checked out since the move.
+#
+# Checked rather than assumed, for the same reason: a missing header here produces "cannot
+# open source file 'mbxspout.h'", which sends the reader looking for a missing file instead
+# of a missing sibling checkout.
+if(NOT DEFINED MBXSPOUT_ROOT)
+    set(MBXSPOUT_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../../mbxspout)
+endif()
+if(NOT EXISTS ${MBXSPOUT_ROOT}/include/mbxspout.h)
+    message(FATAL_ERROR
+        "mbxspout.h not found at ${MBXSPOUT_ROOT}/include.
+"
+        "The receive half needs mbxspout's published header, which lives in the mbxspout "
+        "repo. Clone mbxspout beside mbxhub, or pass -DMBXSPOUT_ROOT=<path-to>/mbxspout.")
+endif()
+
 set(SPOUT_SOURCES
     ${SPOUT_ROOT}/SpoutDirectX/SpoutDX/SpoutDX.cpp
     ${SPOUT_ROOT}/SpoutGL/SpoutCopy.cpp
@@ -39,7 +58,7 @@ add_executable(hello-spout hello-spout.cpp ${SPOUT_SOURCES})
 set_property(TARGET hello-spout PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 
 target_include_directories(hello-spout PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../include              # mbxspout.h - the contract
+    ${MBXSPOUT_ROOT}/include                               # mbxspout.h - the contract
     ${SPOUT_ROOT}/SpoutDirectX/SpoutDX
     ${SPOUT_ROOT}/SpoutGL)
 target_compile_definitions(hello-spout PRIVATE SPOUT_BUILD_STATIC _CRT_SECURE_NO_WARNINGS NOMINMAX)

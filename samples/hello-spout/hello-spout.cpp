@@ -9,15 +9,26 @@
 //   supported surface. It is what a partner integrates against, it is versioned, and the
 //   major-version assert is what makes a pin bump safe. See RunReceive().
 //
-//   SENDING does NOT. It links the vendored spoutDX sources straight into this exe. There
-//   are no send exports in mbxspout.dll and there are not meant to be: sending is ruled out
-//   by the spec (docs/2026-09-06-mbxspout-dll-spec.md section 1) because MBXHub-as-a-source
-//   is a different feature with a different frame-rate floor. See RunSend().
+//   SENDING does NOT. It links the vendored spoutDX sources straight into this exe. See
+//   RunSend().
+//
+//   THAT IS NOW A PROPERTY OF THIS SAMPLE, NOT OF THE ABI. This file was written against the
+//   receive-only spec, whose section 1 ruled sending out. The operator reversed that on
+//   2026-09-06 and mbxspout became a send-and-receive library: mbxspout_sender_open,
+//   mbxspout_sender_open_on, mbxspout_sender_send_texture, mbxspout_sender_send_pixels,
+//   mbxspout_sender_resize, mbxspout_sender_name, mbxspout_sender_state and
+//   mbxspout_sender_close are all published exports today. The current contract is
+//   include/mbxspout.h in the mbxspout repo, and it is normative over anything said here.
+//
+//   RunSend is deliberately left linking spoutDX rather than rewritten onto those exports,
+//   because the contrast is the lesson: one half goes through a versioned C ABI you pin by
+//   hash, the other compiles a third-party SDK into your own binary. If you want to send
+//   THROUGH the ABI, the sender_* exports above are the surface to use - this file does not
+//   demonstrate them.
 //
 //   So: if you are writing a receiver, copy RunReceive and ship mbxspout.dll. If you are
-//   writing a sender, RunSend shows you the SDK call sequence, but you are using Spout
-//   directly and mbxspout.dll is not involved. Do not read this file as evidence that the
-//   ABI can send. It cannot.
+//   writing a sender, RunSend shows you the raw SDK call sequence, and mbxspout.dll is not
+//   involved in it.
 // ============================================================================================
 //
 // Modes:
@@ -30,8 +41,9 @@
 //
 // Options: --dll <path>  --host <ip>  --port <n>
 //
-// Zero new dependencies: d3d11, dxgi and winhttp are in-box, the Spout sources are vendored
-// in this repo, and mbxspout.dll is resolved at runtime.
+// Zero new dependencies: d3d11, dxgi and winhttp are in-box. The Spout sources and
+// mbxspout.h come from the SIBLING mbxspout checkout (see CMakeLists.txt - SPOUT_ROOT and
+// MBXSPOUT_ROOT, both overridable), and mbxspout.dll is resolved at runtime.
 
 #include <windows.h>
 #include <winhttp.h>
@@ -500,12 +512,14 @@ static void Usage()
         "  hello-spout --register                              register with MBXHub, print the exchange\n"
         "  hello-spout --launched                              what MBXHub runs: register, then receive\n"
         "\n"
-        "  --dll <path>    mbxspout.dll to load (default: beside this exe, then the repo build output)\n"
+        "  --dll <path>    mbxspout.dll to load (default: beside this exe, then the sibling\n"
+        "                  mbxspout checkout's build\\Release)\n"
         "  --host <ip>     MBXHub host for --register (default 127.0.0.1)\n"
         "  --port <n>      MBXHub port for --register (default 8080)\n"
         "\n"
-        "Receiving uses the published C ABI. Sending does not and cannot - there are no send\n"
-        "exports, by design. See the comment at the top of hello-spout.cpp.\n");
+        "Receiving uses the published C ABI. Sending here links spoutDX directly - a choice of\n"
+        "this sample, not a limit of the ABI: mbxspout publishes sender_* exports too. See the\n"
+        "comment at the top of hello-spout.cpp.\n");
 }
 
 int main(int argc, char** argv)
@@ -523,11 +537,19 @@ int main(int argc, char** argv)
     }
 
     if (dllPath.empty()) {
-        // beside the exe first - that is how it ships - then the repo's own build output,
-        // which is what makes the sample runnable straight after the repo-root build-spout.cmd.
+        // Beside the exe first - that is how it ships. Then the SIBLING mbxspout checkout's
+        // build output, which is what makes the sample runnable straight after mbxspout's
+        // build-spout.cmd.
+        //
+        // Ascend 5, not 4: this used to live in the mbxspout repo, where four levels up from
+        // build\Release landed on that repo's root and its own build output was right there.
+        // The sample moved to mbxhub in 7c9a085 and the arithmetic came with it, so the
+        // fallback has been resolving to mbxhub\build\Release\mbxspout.dll - a path that has
+        // never existed. Five levels reaches the directory holding BOTH checkouts, and the
+        // sibling is named explicitly, matching MBXSPOUT_ROOT in CMakeLists.txt.
         const std::string beside = ExeDir() + "mbxspout.dll";
         if (GetFileAttributesA(beside.c_str()) != INVALID_FILE_ATTRIBUTES) dllPath = beside;
-        else dllPath = AscendFromExe(4) + "\\build\\Release\\mbxspout.dll";
+        else dllPath = AscendFromExe(5) + "\\mbxspout\\build\\Release\\mbxspout.dll";
     }
 
     const std::string mode = pos.empty() ? std::string() : std::string(pos[0]);
