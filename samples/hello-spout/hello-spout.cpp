@@ -119,7 +119,7 @@ static std::string AscendFromExe(int levels)
 // ---------------------------------------------------------------- the charm half
 //
 // The smallest honest registration: POST the manifest to /charms/register and print what
-// comes back, verbatim. hello-charm (C#, in MBXHUB-Partners) is the sample that walks the
+// comes back, verbatim. hello-charm (C#, beside this sample in mbxhub) walks the
 // FULL contract - approval, tickets, gated calls, events. This one registers and stops,
 // because its subject is the video path, not the charm protocol.
 
@@ -332,7 +332,7 @@ static int RunSend(const char* name, unsigned w, unsigned h, int fps, int second
             // Counted here, not read from sender.GetFps(). That returns a frame-count-derived
             // rate, and Spout's frame counting is off unless HKCU\Software\Leading Edge\Spout\
             // Framecount has been written by Spout's own settings app - the same measurement
-            // that shapes the DLL's present path (spec section 3.1). Asked for 30 fps it
+            // that is why the DLL's present never gates on IsFrameNew(). Asked for 30 fps it
             // reports 60.0. A sample must not print a number it knows is wrong.
             const double elapsed = WallSeconds() - t0;
             Log("sent %ld frames (%.1f fps)", frames, elapsed > 0 ? frames / elapsed : 0.0);
@@ -379,7 +379,7 @@ static const char* StateText(int32_t s)
     }
 }
 
-// Load the DLL and resolve the six exports. This is the sequence a consumer performs once,
+// Load the DLL and resolve the six exports this receiver uses. A consumer does this once,
 // at startup, and every failure in it is a legible message rather than a crash.
 static bool LoadApi(MbxSpoutApi& api, const std::string& dllPath)
 {

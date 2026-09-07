@@ -7,8 +7,8 @@ Two instances are intended to demonstrate sending and receiving without another 
 
 **The sample requires the sibling `mbxspout` checkout** — it takes both the Spout SDK sources and
 `mbxspout.h` from there. The header path and the runtime DLL fallback were repaired on 2026-09-07;
-both had kept the relative paths from when this sample lived in the `mbxspout` repo. Neither the
-build nor a run has been performed since that repair.
+both had kept the relative paths from when this sample lived in the `mbxspout` repo. The Release
+build and a bounded sender/receiver run were verified on 2026-09-07; details are below.
 
 ```cmd
 build.cmd
@@ -32,10 +32,11 @@ sender. The current [`mbxspout.h`](../../../mbxspout/include/mbxspout.h) also de
 operations, including `mbxspout_sender_open`, `mbxspout_sender_send_texture` and
 `mbxspout_sender_send_pixels`. The older receive-only description no longer describes the full ABI.
 
-Read `RunSend()` for this sample's direct SDK sequence. Use the current header and
-[transmit/receive specification](../../../mbxspout/docs/2026-09-07-mbxspout-txrx-spec.md) for the
-DLL sender API. This sample does not demonstrate that API. Receive-only claims in the sample's
-source comments are also historical; its implementation was not changed in this documentation pass.
+Read `RunSend()` for this sample's direct SDK sequence. For the DLL's sender API, use
+[`mbxspout.h`](../../../mbxspout/include/mbxspout.h) — it is the normative contract and documents
+each export in place — with the summary table in
+[mbxspout's README](../../../mbxspout/README.md). This sample does not demonstrate that API; its
+source comments distinguish the sample's direct-SDK sender from the DLL's sender API.
 
 ---
 
@@ -93,14 +94,15 @@ starts teaches the wrong lesson on someone else's machine.
 2. Otherwise, the sample looks beside `hello-spout.exe`.
 3. If absent, it walks **five** directories up from the executable — to the directory holding
    both checkouts — and appends `mbxspout\build\Release\mbxspout.dll`, naming the sibling
-   explicitly. This matches `MBXSPOUT_ROOT` in [`CMakeLists.txt`](CMakeLists.txt).
+   explicitly. This matches the default sibling layout in [`CMakeLists.txt`](CMakeLists.txt).
+   A custom `MBXSPOUT_ROOT` does not change runtime lookup; use `--dll` for another DLL location.
 
 Until 2026-09-07 step 3 walked four levels and appended `build\Release\mbxspout.dll`, which
 resolved inside **mbxhub** — a path that has never existed — because the arithmetic was written
 when this sample lived in the `mbxspout` repo.
 
 Supply `--dll` with the DLL you intend to test, or place it beside the executable. The fallback
-targets an unsigned developer build; this pass did not verify a packaged DLL or its signature.
+targets a developer build; this pass did not verify a packaged DLL or its signature.
 
 ---
 
@@ -125,7 +127,8 @@ hello-spout --launched                                what MBXHub runs: register
 frame-count-derived, and Spout's frame counting is off unless `HKCU\Software\Leading Edge\Spout\
 Framecount` has been written by Spout's own settings app — which nobody who merely runs a Spout
 application has done. Asked for 30 fps it reports 60.0. The same measurement is why the DLL's
-`present` never gates on `IsFrameNew()`; see spec §3.1.
+`present` never gates on `IsFrameNew()` — it presents at display cadence instead, since
+`IsFrameNew()` returned true on every call and the sender's frame number never advanced.
 
 **The picture is drawn on the CPU.** Diagonal bars, a colour-cycling band and a walking square,
 written into BGRA and pushed with `UpdateSubresource`. No shader, no `.fx` file, no compile step —
@@ -155,5 +158,15 @@ repo's own build output. The move on 2026-09-07 carried the relative paths uncha
 include pointed at an `mbxhub/include` that does not exist — the sample was not buildable as
 checked out — and the DLL fallback resolved inside `mbxhub`. Both were repaired on 2026-09-07.
 
-**Not verified:** neither the build nor a run has been performed since the repair. The two paths
-were confirmed to resolve to files that exist on this machine; that is not the same as a compile.
+**Relocated build caches:** if CMake reports the old `mbxspout/samples/hello-spout` source path,
+preserve or remove this sample's generated `build` directory and rerun `build.cmd`. A cache from
+the old location cannot be reused in this checkout.
+
+**Verified on 2026-09-07:** `build.cmd` passed in Release after preserving the relocated cache
+and configuring a fresh build. An 8-second 640×360 sender run and a 5-second receiver run both
+exited with code 0. The receiver loaded ABI `0x00010001`, reached `live`, and presented 303 frames.
+No `--dll` override or DLL beside the executable was used, exercising the sibling-checkout fallback.
+Presented frames include repeated presentations; this count is not a claim of unique source frames.
+
+This verifies the local build and video path. MusicBee registration/approval, device-loss recovery,
+custom checkout layouts, packaged DLL signatures and visual appearance were not tested in this run.
