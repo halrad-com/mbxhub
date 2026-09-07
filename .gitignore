@@ -9,3 +9,11 @@ build/
 
 # Agent scratch, not part of the repository's subject.
 .claude/
+
+# Generated BESIDE a sample, which `build/` alone does not catch: run output, and
+# any build tree that was renamed rather than deleted while something was being
+# diagnosed (build.before-cache-refresh-*, and anything else in that shape). Same
+# rule as above - a sample is its sources, and a clone should build them fresh
+# rather than inherit somebody's machine.
+samples/**/*.log
+samples/**/build.*/
