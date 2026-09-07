@@ -2,6 +2,8 @@
 
 Examples that build on MBXHub's public interfaces. See each folder's `README.md` / `PROMPT.md` for setup, toolchains, dependencies and known limitations.
 
+**[`requirements.txt`](requirements.txt) is the one-page version** — what each sample needs before it will build or run, including the five that have no build step at all. Read it before spending twenty minutes on one that was never going to compile on this machine.
+
 **Read [the integration guide](../MBXHUB-SDK/integration-guide.md) first**, then run the sample that
 matches your shape. `hello-page`, `hello-charm` and `hello-endpoint` introduce the three `kind`
 values, which decide how MBXHub reaches you. Their installation and credential flows differ;

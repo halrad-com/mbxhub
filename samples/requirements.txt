@@ -1,0 +1,71 @@
+# What each sample needs before it will build or run.
+#
+# Ten folders, four toolchains, and five of them have no build at all. Nothing
+# here installs anything - this is the answer to "why won't this one build",
+# read before you spend twenty minutes on it.
+#
+# EVERY sample that talks to the hub needs a RUNNING MBXHub, which is MusicBee
+# with the plugin loaded. The hub is not a package you install for a sample; it
+# is the thing the sample integrates with. Default http://localhost:8080, and
+# ports are claimed as an even pair, so a machine whose 8080 was taken is on
+# 8082 - see MBXHUB-SDK/integration-guide.md, "Find the hub".
+#
+# Versions below are what the sample declares or was built against. Where a
+# range is written it is the sample's own floor, not a guess.
+
+
+# ---------------------------------------------------------------- .NET ------
+# dotnet build <sample>/<sample>.csproj -c Release
+#
+# .NET SDK 8.0 or newer.
+
+hello-app            net8.0-windows
+                     Microsoft.Web.WebView2  1.0.4078.44   (NuGet, restored on build)
+                     WINDOWS ONLY - the -windows target and WebView2 are not
+                     portable. The other two .NET samples are.
+
+hello-charm          net8.0
+hello-endpoint       net8.0
+
+
+# ---------------------------------------------------------------- C++ -------
+# samples/hello-spout/build.cmd
+#
+# Visual Studio 2022 with the "Desktop development with C++" workload, which is
+# what supplies both the MSVC toolset and the CMake the script uses. The script
+# finds it through vswhere; no PATH setup needed.
+#
+# THE SIBLING CHECKOUT IS A BUILD DEPENDENCY, not an optional extra. The sample
+# takes the Spout2 SDK sources and mbxspout.h from ../../../mbxspout, so that
+# repository must be cloned beside this one:
+#
+#     source/repos/mbxhub/          <- you are here
+#     source/repos/mbxspout/        <- must exist
+#
+# AT RUNTIME it loads mbxspout.dll, looked for beside the exe first and then in
+# the sibling checkout's build\Release. Build that DLL in mbxspout, copy it
+# beside the sample exe, or pass --dll <path>.
+
+hello-spout          Visual Studio 2022  (Desktop development with C++)
+                     CMake               (bundled with that workload)
+                     mbxspout            sibling checkout, sources + header
+                     mbxspout.dll        at runtime
+
+
+# ---------------------------------------------------------------- Node ------
+# cd samples/mcp && npm ci   (or npm install without a lockfile)
+
+mcp                  node                >=22.18   (declared in package.json)
+                     @modelcontextprotocol/sdk  ^1.0.0
+
+
+# ------------------------------------------------- nothing to build ---------
+# Listed so a reader counting folders does not wonder whether they were
+# forgotten. These are pages, prompts and configuration: open them, read them,
+# or hand them to an agent. No toolchain, no build step, and none is planned.
+
+dynaport             none - a page
+hello-page           none - a page
+library-tree         none - a page
+lms-dstm             none - a prompt recipe (targets Lyrion Music Server)
+playlist-charm       none - a prompt recipe
