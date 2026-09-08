@@ -24,9 +24,16 @@ public static class FileLock
         var dir = Path.GetDirectoryName(targetPath);
         if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
 
-        if (File.Exists(targetPath))
-            File.Replace(stagedPath, targetPath, destinationBackupFileName: null);
-        else
-            File.Move(stagedPath, targetPath);
+        var adjacent = targetPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            using (var source = File.OpenRead(stagedPath))
+            using (var destination = new FileStream(adjacent, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            { source.CopyTo(destination); destination.Flush(true); }
+            if (File.Exists(targetPath)) File.Replace(adjacent, targetPath, null);
+            else File.Move(adjacent, targetPath);
+            File.Delete(stagedPath);
+        }
+        finally { if (File.Exists(adjacent)) File.Delete(adjacent); }
     }
 }

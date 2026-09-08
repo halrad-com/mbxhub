@@ -50,7 +50,7 @@ public class UpdateServiceTests : IDisposable
         {
             new ResourceEntry
             {
-                Filename = "mb.dll", Url = "core/0.5.4.6/mb.dll", Sha256 = sha,
+                Filename = "mb.dll", Url = "core/0.5.4.6/mb.dll", Sha256 = sha, Size = 9,
                 Target = new TargetRef { Root = "plugins", Path = "mb.dll" }
             }
         }
@@ -114,7 +114,7 @@ public class UpdateServiceTests : IDisposable
         {
             new ResourceEntry
             {
-                Filename = "ffmpeg.exe", Url = "ffmpeg/7.1/ffmpeg.exe", Sha256 = sha,
+                Filename = "ffmpeg.exe", Url = "ffmpeg/7.1/ffmpeg.exe", Sha256 = sha, Size = 11,
                 Target = new TargetRef { Root = "plugins", Path = "ffmpeg.exe" },
                 Authenticode = false   // third-party: we never sign it; sha256-only under the signed manifest
             }

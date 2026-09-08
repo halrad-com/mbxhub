@@ -15,5 +15,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\MBXDist.Platform.Windows\MBXDist.Platform.Windows.csproj" />
+    <ProjectReference Include="..\..\src\MBXDist.App\MBXDist.App.csproj" />
   </ItemGroup>
 </Project>

@@ -1,9 +1,7 @@
 namespace MBXDist.App;
 
 /// <summary>Compile-time app identity + defaults. The catalog and manifests are embedded resources
-/// (see Embedded/); the pinned code-signing thumbprint(s) and feed base URL are configured here and
-/// overridable at runtime. NOTE: PinnedThumbprints is a PLACEHOLDER until the real code-signing
-/// certificate thumbprint is baked in.</summary>
+/// (see Embedded/). The feed URL is overridable; certificate pins are compile-time trust configuration.</summary>
 public static class AppInfo
 {
     public const string Version = "0.1.0";
@@ -25,6 +23,6 @@ public static class AppInfo
     public const string CatalogResourceSuffix = "catalog.json";
     public const string ManifestResourcePrefix = "manifests.";
 
-    /// <summary>Self-hosted telemetry sink URL. Null = telemetry queues locally (size-capped) and is never sent.</summary>
+    /// <summary>Reserved sink configuration. The CLI writes local diagnostics and does not send telemetry.</summary>
     public const string? TelemetrySinkUrl = null;
 }

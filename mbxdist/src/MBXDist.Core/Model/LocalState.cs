@@ -6,6 +6,8 @@ public sealed class LocalState
     public string ClientId { get; set; } = "";
     public Dictionary<string, string> TargetRoots { get; set; } = new();
     public Dictionary<string, PackageState> Packages { get; set; } = new();
+    // Intent only: recovery verifies bytes against the embedded manifest again.
+    public Dictionary<string, string> InProgress { get; set; } = new();
 }
 
 public sealed class PackageState

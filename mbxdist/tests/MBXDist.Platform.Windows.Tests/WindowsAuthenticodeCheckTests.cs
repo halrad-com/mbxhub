@@ -19,7 +19,7 @@ public class WindowsAuthenticodeCheckTests : IDisposable
         Assert.Null(result.ThumbprintSha256);
     }
 
-    [Fact]
+    [SignedFixtureFact]
     public void Signed_fixture_is_trusted_with_expected_thumbprint()
     {
         // Guarded: runs only when a real signed binary is provided out-of-band.
@@ -27,8 +27,8 @@ public class WindowsAuthenticodeCheckTests : IDisposable
         // that signtool prints — see SignatureResult.
         var fixture = Environment.GetEnvironmentVariable("MBXDIST_SIGNED_FIXTURE");
         var expected = Environment.GetEnvironmentVariable("MBXDIST_SIGNED_THUMBPRINT");
-        if (string.IsNullOrEmpty(fixture) || string.IsNullOrEmpty(expected))
-            return; // skipped without a fixture — see manual checklist in the plan
+        Assert.False(string.IsNullOrEmpty(fixture));
+        Assert.False(string.IsNullOrEmpty(expected));
 
         var result = new WindowsAuthenticodeCheck().Check(fixture);
 
@@ -41,5 +41,15 @@ public class WindowsAuthenticodeCheckTests : IDisposable
     public void Dispose()
     {
         if (Directory.Exists(_dir)) Directory.Delete(_dir, recursive: true);
+    }
+}
+
+public sealed class SignedFixtureFactAttribute : FactAttribute
+{
+    public SignedFixtureFactAttribute()
+    {
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("MBXDIST_SIGNED_FIXTURE"))
+            || string.IsNullOrEmpty(Environment.GetEnvironmentVariable("MBXDIST_SIGNED_THUMBPRINT")))
+            Skip = "Supply a real signed fixture and its SHA-256 certificate hash to exercise signature acceptance.";
     }
 }

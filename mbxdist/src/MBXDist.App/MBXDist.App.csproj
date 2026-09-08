@@ -9,6 +9,15 @@
     <AssemblyName>mbxdist</AssemblyName>
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' and '$(MBXDistPublish)' == 'true'">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <PublishTrimmed>false</PublishTrimmed>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\MBXDist.Core\MBXDist.Core.csproj" />
     <ProjectReference Include="..\MBXDist.Platform.Windows\MBXDist.Platform.Windows.csproj" />

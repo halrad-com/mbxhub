@@ -44,13 +44,10 @@ public class DependencyResolverTests
     }
 
     [Fact]
-    public void Cycle_terminates()
+    public void Cycle_is_rejected_before_any_installation()
     {
         var manifests = new Dictionary<string, Manifest> { ["a"] = M("a", ("b", "1.0")), ["b"] = M("b", ("a", "1.0")) };
         var r = new DependencyResolver(id => manifests[id]);
-        var closure = r.ResolveClosure(new[] { "a" }, new LocalState());
-        Assert.Contains("a", closure);
-        Assert.Contains("b", closure);
-        Assert.Equal(2, closure.Count);
+        Assert.Throws<InvalidDataException>(() => r.ResolveClosure(new[] { "a" }, new LocalState()));
     }
 }

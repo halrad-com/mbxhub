@@ -16,12 +16,13 @@ public sealed class Updater
         if (FileLock.IsLocked(targetPath))
         {
             var pending = targetPath + ".pending";
-            if (File.Exists(pending)) File.Delete(pending);
-            File.Move(stagedPath, pending);
+            if (!string.Equals(Path.GetFullPath(stagedPath), Path.GetFullPath(pending), StringComparison.OrdinalIgnoreCase))
+                FileLock.AtomicReplace(stagedPath, pending);
             return new ApplyResult(targetPath, ApplyOutcome.StagedPending);
         }
 
         FileLock.AtomicReplace(stagedPath, targetPath);
+        if (File.Exists(targetPath + ".pending")) File.Delete(targetPath + ".pending");
         return new ApplyResult(targetPath, ApplyOutcome.Applied);
     }
 }

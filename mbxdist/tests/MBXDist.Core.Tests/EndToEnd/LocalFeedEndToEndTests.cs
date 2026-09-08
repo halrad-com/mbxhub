@@ -99,7 +99,7 @@ public class LocalFeedEndToEndTests : IAsyncLifetime, IDisposable
             {
                 Filename = "mb_MBXHub.dll",
                 Url = "core/0.5.4.6/mb_MBXHub.dll",
-                Sha256 = HashOfContent(CoreContent),
+                Sha256 = HashOfContent(CoreContent), Size = System.Text.Encoding.UTF8.GetByteCount(CoreContent),
                 Target = new TargetRef { Root = "musicbee-plugins", Path = "mb_MBXHub.dll" },
                 Locked = true
             }
