@@ -278,7 +278,7 @@ is in <a href="https://github.com/halrad-com/mbxhub/blob/main/samples/"><code>sa
 <tr>
 <td><code>source</code></td>
 <td>per entry</td>
-<td>for a placement that shows pixels (<code>tab</code> / <code>window</code> / <code>overlay</code>): a path or a render source such as <code>spout:&lt;sender&gt;</code>. Parsed and carried; <strong>nothing in this build fills a surface from it</strong></td>
+<td>for a placement that shows pixels (<code>tab</code> / <code>window</code> / <code>overlay</code>): a path or a render source such as <code>spout:&lt;sender&gt;</code>. <strong>A <code>window</code> or <code>overlay</code> source is hosted by the MBXHub Shell</strong>, which opens the named Spout sender and presents it. It requires the <code>render:spout</code> capability: without a current grant the hub withholds the value and reports <code>blocked</code>, and the Shell re-checks authorization every five seconds while a source is hosted. <code>tab</code> is parsed and carried with nothing filling it yet</td>
 </tr>
 </tbody>
 </table>

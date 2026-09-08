@@ -108,7 +108,7 @@ A charm is a JSON file. Almost every shipping charm is exactly this shape:
 | `launch` | top level | what to start for a `proc` charm — its own executable, or a URL scheme. Absent is normal: an application whose own launcher starts it is still a `proc`. Read by the `launch` verb, under the policy below |
 | `registration` | top level | the hub’s own record for a registered charm. Written by the hub, never by you |
 | `placement` | per entry | where the entry appears. Read; absent means the charm’s own placement, which is `rail` unless `display` is `action-menu`. There is no top-level `placement` field in this build — a charm’s own placement comes from its `display` |
-| `source` | per entry | for a placement that shows pixels (`tab` / `window` / `overlay`): a path or a render source such as `spout:<sender>`. Parsed and carried; **nothing in this build fills a surface from it** |
+| `source` | per entry | for a placement that shows pixels (`tab` / `window` / `overlay`): a path or a render source such as `spout:<sender>`. **A `window` or `overlay` source is hosted by the MBXHub Shell**, which opens the named Spout sender and presents it. It requires the `render:spout` capability: without a current grant the hub withholds the value and reports `blocked`, and the Shell re-checks authorization every five seconds while a source is hosted. `tab` is parsed and carried with nothing filling it yet |
 <!-- sdk:fields:end -->
 
 Top-level `icon` / `action` / `display` / `msg` are the single-action shorthand; `expand[]` is the list. A charm may use either.
