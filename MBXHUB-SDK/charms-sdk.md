@@ -103,9 +103,10 @@ A charm is a JSON file. Almost every shipping charm is exactly this shape:
 | `publisher` | top level | who you are, in your own words |
 | `version` | top level | your release |
 | `scopes` | top level | the capabilities you ask for. Parsed and recorded — asking is not being granted |
-| `scopeReasons` | top level | one sentence per scope, **in your words**, saying why you want it — an object keyed by scope name. Shown verbatim beside the capability’s own sentence on the approval row, and again on the runtime prompt labelled *They say:*. One line, at most 200 characters, trimmed, the same set of names as `scopes`. **Required from `schemaVersion` 2**; a manifest declaring 1, or nothing, may omit it |
+| `scopeReasons` | top level | one sentence per scope, **in your words**, saying why you want it — an object keyed by scope name. Shown verbatim beside the capability’s own sentence on the approval row, and again on the runtime prompt labeled *They say:*. One line, at most 200 characters, trimmed, the same set of names as `scopes`. **Required from `schemaVersion` 2**; a manifest declaring 1, or nothing, may omit it |
 | `endpoint` | top level | where an `endpoint` charm answers — and where MBXHub POSTs its activations. Also the fallback route for a `proc` charm with no socket connected |
 | `launch` | top level | what to start for a `proc` charm — its own executable, or a URL scheme. Absent is normal: an application whose own launcher starts it is still a `proc`. Read by the `launch` verb, under the policy below |
+| `launchFallback` | top level | an optional second target, in the same format as `launch`. Tried only when the first is unavailable (a missing executable, an uninstalled scheme handler) or its dispatch fails — a successful dispatch never starts both. Judged by the same policy, shown on the approval row beside the first, and a policy refusal ends the attempt rather than moving on to it |
 | `registration` | top level | the hub’s own record for a registered charm. Written by the hub, never by you |
 | `placement` | per entry | where the entry appears. Read; absent means the charm’s own placement, which is `rail` unless `display` is `action-menu`. There is no top-level `placement` field in this build — a charm’s own placement comes from its `display` |
 | `source` | per entry | for a placement that shows pixels (`tab` / `window` / `overlay`): a path or a render source such as `spout:<sender>`. **A `window` or `overlay` source is hosted by the MBXHub Shell**, which opens the named Spout sender and presents it. It requires the `render:spout` capability: without a current grant the hub withholds the value and reports `blocked`, and the Shell re-checks authorization every five seconds while a source is hosted. `tab` is parsed and carried with nothing filling it yet |
@@ -271,7 +272,7 @@ A refusal is always a stated code, never a silent drop.
 **Five things take an approval back**, all of them on your next announcement, and all with the same disposition — back to `pending`, ticket cleared, and a person approves again. Four are about what you declared and keep your grants:
 
 - announcing from a **different executable** than the one that was approved;
-- declaring a **different `launch` target** — a scheme swapped for another, or an executable whose arguments changed;
+- declaring a **different `launch` or `launchFallback` target** — a scheme swapped for another, or an executable whose arguments changed;
 - declaring a **different set of placements** than the row the person approved showed — your own placement plus whatever your `expand[]` entries resolve to;
 - **rewording why you want a capability you already asked for** — the sentence in `scopeReasons`, compared trimmed and case-*sensitively*, because it is prose a person read rather than a path or a keyword. It is the basis of their consent, so new words need a new yes.
 
@@ -338,7 +339,7 @@ A capability is either **granted** or it is not, and when it is not there are **
 
 **The shape:** one line, at most 200 characters, trimmed — a row beside a capability’s name, not a paragraph and not a layout you control. **The same set as `scopes`:** a scope with no sentence is `SCOPE_RATIONALE_MISSING` (the one refusal the version gates), a sentence that will not fit is `SCOPE_RATIONALE_INVALID`, and a sentence for a scope you did not ask for is `SCOPE_RATIONALE_UNKNOWN` — refused, not dropped, because words nobody will ever read are worth being told about while you are still here. All three name the offending scope, and all three are answered before a byte is written.
 
-**Where it is read.** Verbatim on the Charm Manager’s approval row, beside the capability’s own sentence, which is ours; and again on the runtime prompt, on its own line and labelled *They say:*, in quotes. The two are never merged: ours says what the capability lets *anybody* do, yours is a claim you make about your own application, and an unlabelled sentence of yours would borrow the standing of ours. Nothing is composed on your behalf — a record carrying no sentence shows only ours, and says so. **Rewording it takes the approval back**, which is the fourth trigger above.
+**Where it is read.** Verbatim on the Charm Manager’s approval row, beside the capability’s own sentence, which is ours; and again on the runtime prompt, on its own line and labeled *They say:*, in quotes. The two are never merged: ours says what the capability lets *anybody* do, yours is a claim you make about your own application, and an unlabeled sentence of yours would borrow the standing of ours. Nothing is composed on your behalf — a record carrying no sentence shows only ours, and says so. **Rewording it takes the approval back**, which is the fourth trigger above.
 
 ### Automation classes
 
@@ -413,20 +414,30 @@ still decide.
 
 ```
 GET  /charms/services      → { "local": true, "services": [ { "id", "label", "icon", "launchKind" } ] }
-POST /charms/{id}/launch   → 200, or a named refusal
+POST /charms/{id}/launch   → 200 { "id", "launched", "raised", "launchKind" }, or a named refusal
 ```
 
 `launchKind` is `scheme` or `exe`, which is all a button needs; **your launch target is never
 returned**, because it is the operator's to read on the approval row. The press is **local-only**, so
-off-loopback the list answers empty with `local: false` rather than drawing tiles that cannot work.
+from another machine the list answers empty with `local: false` rather than drawing tiles that cannot work.
 The launch route takes **no target parameter** — the same structural binding that keeps *what was
 approved* and *what starts* from coming apart.
 
 Declaring the placement is how you **ask** for that surface. Without the condition, every Tools-menu
 launch charm would appear in the HUD as a side effect of existing.
 
-Refusals: `403 NOT_LOCAL`, `404 NOT_FOUND`, `403 LAUNCH_REFUSED` carrying the policy's own reason,
-and `409 LAUNCH_NOT_STARTED` when the plan was allowed and the process did not start.
+Refusals: `403 NOT_LOCAL`, `403 API_READ_ONLY` when the API is in read-only mode (the same
+refusal registration gives; the Tools-menu item and the Charm Manager still launch, because the
+console is not the API), `404 NOT_FOUND`, `403 LAUNCH_REFUSED` carrying the policy's own reason, and
+`409 LAUNCH_NOT_STARTED` when the plan was allowed and nothing happened.
+
+**A second press raises, it does not start a second copy.** When the charm's executable is already
+running, its window is restored and brought to the front, and the answer says which happened:
+`{ "id", "launched": false, "raised": true, "launchKind" }` — exactly one of `launched` and `raised`
+is true. So `409 LAUNCH_NOT_STARTED` does **not** mean *already running*. It means the shell refused
+the start, the process being tracked has gone, or the application is running with no window to
+raise. A scheme launch is handed to Windows: a repeat press is the scheme handler's business, and
+the hub does not wait for a window.
 
 ### The `menu` placement
 

@@ -253,7 +253,7 @@ is in <a href="https://github.com/halrad-com/mbxhub/blob/main/samples/"><code>sa
 <tr>
 <td><code>scopeReasons</code></td>
 <td>top level</td>
-<td>one sentence per scope, <strong>in your words</strong>, saying why you want it — an object keyed by scope name. Shown verbatim beside the capability’s own sentence on the approval row, and again on the runtime prompt labelled <em>They say:</em>. One line, at most 200 characters, trimmed, the same set of names as <code>scopes</code>. <strong>Required from <code>schemaVersion</code> 2</strong>; a manifest declaring 1, or nothing, may omit it</td>
+<td>one sentence per scope, <strong>in your words</strong>, saying why you want it — an object keyed by scope name. Shown verbatim beside the capability’s own sentence on the approval row, and again on the runtime prompt labeled <em>They say:</em>. One line, at most 200 characters, trimmed, the same set of names as <code>scopes</code>. <strong>Required from <code>schemaVersion</code> 2</strong>; a manifest declaring 1, or nothing, may omit it</td>
 </tr>
 <tr>
 <td><code>endpoint</code></td>
@@ -264,6 +264,11 @@ is in <a href="https://github.com/halrad-com/mbxhub/blob/main/samples/"><code>sa
 <td><code>launch</code></td>
 <td>top level</td>
 <td>what to start for a <code>proc</code> charm — its own executable, or a URL scheme. Absent is normal: an application whose own launcher starts it is still a <code>proc</code>. Read by the <code>launch</code> verb, under the policy below</td>
+</tr>
+<tr>
+<td><code>launchFallback</code></td>
+<td>top level</td>
+<td>an optional second target, in the same format as <code>launch</code>. Tried only when the first is unavailable (a missing executable, an uninstalled scheme handler) or its dispatch fails — a successful dispatch never starts both. Judged by the same policy, shown on the approval row beside the first, and a policy refusal ends the attempt rather than moving on to it</td>
 </tr>
 <tr>
 <td><code>registration</code></td>
@@ -468,7 +473,7 @@ Content-Type: application/json
 <p><strong>Five things take an approval back</strong>, all of them on your next announcement, and all with the same disposition — back to <code>pending</code>, ticket cleared, and a person approves again. Four are about what you declared and keep your grants:</p>
 <ul>
 <li>announcing from a <strong>different executable</strong> than the one that was approved;</li>
-<li>declaring a <strong>different <code>launch</code> target</strong> — a scheme swapped for another, or an executable whose arguments changed;</li>
+<li>declaring a <strong>different <code>launch</code> or <code>launchFallback</code> target</strong> — a scheme swapped for another, or an executable whose arguments changed;</li>
 <li>declaring a <strong>different set of placements</strong> than the row the person approved showed — your own placement plus whatever your <code>expand[]</code> entries resolve to;</li>
 <li><strong>rewording why you want a capability you already asked for</strong> — the sentence in <code>scopeReasons</code>, compared trimmed and case-<em>sensitively</em>, because it is prose a person read rather than a path or a keyword. It is the basis of their consent, so new words need a new yes.</li>
 </ul>
@@ -604,7 +609,7 @@ Content-Type: application/json
 </code></pre>
 <p><strong>Declare <code>schemaVersion: 2</code> and give every scope its sentence</strong> — that is how a charm written to this document registers. Version 1, declared or absent, is tolerated for manifests that predate the field: such a charm registers exactly as it always did, and pays for it on the approval row, where each capability it asks for reads <em>no reason given</em>. A sentence that <em>is</em> present is judged at every version, because one that cannot be shown is not made showable by the version it arrived under.</p>
 <p><strong>The shape:</strong> one line, at most 200 characters, trimmed — a row beside a capability’s name, not a paragraph and not a layout you control. <strong>The same set as <code>scopes</code>:</strong> a scope with no sentence is <code>SCOPE_RATIONALE_MISSING</code> (the one refusal the version gates), a sentence that will not fit is <code>SCOPE_RATIONALE_INVALID</code>, and a sentence for a scope you did not ask for is <code>SCOPE_RATIONALE_UNKNOWN</code> — refused, not dropped, because words nobody will ever read are worth being told about while you are still here. All three name the offending scope, and all three are answered before a byte is written.</p>
-<p><strong>Where it is read.</strong> Verbatim on the Charm Manager’s approval row, beside the capability’s own sentence, which is ours; and again on the runtime prompt, on its own line and labelled <em>They say:</em>, in quotes. The two are never merged: ours says what the capability lets <em>anybody</em> do, yours is a claim you make about your own application, and an unlabelled sentence of yours would borrow the standing of ours. Nothing is composed on your behalf — a record carrying no sentence shows only ours, and says so. <strong>Rewording it takes the approval back</strong>, which is the fourth trigger above.</p>
+<p><strong>Where it is read.</strong> Verbatim on the Charm Manager’s approval row, beside the capability’s own sentence, which is ours; and again on the runtime prompt, on its own line and labeled <em>They say:</em>, in quotes. The two are never merged: ours says what the capability lets <em>anybody</em> do, yours is a claim you make about your own application, and an unlabeled sentence of yours would borrow the standing of ours. Nothing is composed on your behalf — a record carrying no sentence shows only ours, and says so. <strong>Rewording it takes the approval back</strong>, which is the fourth trigger above.</p>
 <h3 id="automation-classes">Automation classes</h3>
 <p>Split against what they actually do, because “automation” is too coarse for a person to authorize honestly — waking a machine and typing on it are not the same decision:</p>
 <table>
@@ -708,17 +713,26 @@ the HUD's Services drawer. Pressing it starts what the manifest declares, under 
 policy as the Tools menu — the deny-list, the operator's allow-list, and the observed-image gate all
 still decide.</p>
 <pre><code>GET  /charms/services      → { &quot;local&quot;: true, &quot;services&quot;: [ { &quot;id&quot;, &quot;label&quot;, &quot;icon&quot;, &quot;launchKind&quot; } ] }
-POST /charms/{id}/launch   → 200, or a named refusal
+POST /charms/{id}/launch   → 200 { &quot;id&quot;, &quot;launched&quot;, &quot;raised&quot;, &quot;launchKind&quot; }, or a named refusal
 </code></pre>
 <p><code>launchKind</code> is <code>scheme</code> or <code>exe</code>, which is all a button needs; <strong>your launch target is never
 returned</strong>, because it is the operator's to read on the approval row. The press is <strong>local-only</strong>, so
-off-loopback the list answers empty with <code>local: false</code> rather than drawing tiles that cannot work.
+from another machine the list answers empty with <code>local: false</code> rather than drawing tiles that cannot work.
 The launch route takes <strong>no target parameter</strong> — the same structural binding that keeps <em>what was
 approved</em> and <em>what starts</em> from coming apart.</p>
 <p>Declaring the placement is how you <strong>ask</strong> for that surface. Without the condition, every Tools-menu
 launch charm would appear in the HUD as a side effect of existing.</p>
-<p>Refusals: <code>403 NOT_LOCAL</code>, <code>404 NOT_FOUND</code>, <code>403 LAUNCH_REFUSED</code> carrying the policy's own reason,
-and <code>409 LAUNCH_NOT_STARTED</code> when the plan was allowed and the process did not start.</p>
+<p>Refusals: <code>403 NOT_LOCAL</code>, <code>403 API_READ_ONLY</code> when the API is in read-only mode (the same
+refusal registration gives; the Tools-menu item and the Charm Manager still launch, because the
+console is not the API), <code>404 NOT_FOUND</code>, <code>403 LAUNCH_REFUSED</code> carrying the policy's own reason, and
+<code>409 LAUNCH_NOT_STARTED</code> when the plan was allowed and nothing happened.</p>
+<p><strong>A second press raises, it does not start a second copy.</strong> When the charm's executable is already
+running, its window is restored and brought to the front, and the answer says which happened:
+<code>{ &quot;id&quot;, &quot;launched&quot;: false, &quot;raised&quot;: true, &quot;launchKind&quot; }</code> — exactly one of <code>launched</code> and <code>raised</code>
+is true. So <code>409 LAUNCH_NOT_STARTED</code> does <strong>not</strong> mean <em>already running</em>. It means the shell refused
+the start, the process being tracked has gone, or the application is running with no window to
+raise. A scheme launch is handed to Windows: a repeat press is the scheme handler's business, and
+the hub does not wait for a window.</p>
 <h3 id="the-menu-placement">The <code>menu</code> placement</h3>
 <p><strong>Eligible <code>menu</code> entries appear under Tools → MBXHub at MusicBee’s next start</strong>, grouped by charm label (or id if blank). A registration, if present, must be <code>active</code>. A file-installed manifest with no registration block is also eligible. The same eligibility rule applies to menu clicks, HUD services, and launching; an unregistered file can launch a URL scheme under policy, but cannot launch an executable because it has no observed image.</p>
 <p><strong>The status is re-checked at the click</strong>, against the charm as it is on disk at that moment, so a charm revoked after the menu was built is refused when its item is clicked and the reason is logged. MusicBee has no API for removing a menu item, so the item stays visible until MusicBee next starts — what is gated is the click, not the drawing. A click that passes delivers the activation by your kind, and starts your <code>launch</code> target as well when the entry’s action is the bare <code>launch</code> verb.</p>

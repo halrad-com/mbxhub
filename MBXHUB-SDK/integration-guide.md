@@ -213,9 +213,11 @@ POST /charms/{id}/launch   → 200, or a named refusal
 
 `launchKind` is `scheme` or `exe` — enough to render a button — and **your launch target is never
 returned**; that is the operator's to read on the approval row. The press is **local-only**, so
-off-loopback the list comes back empty rather than drawing tiles that cannot work. Declaring the
+from another machine the list comes back empty rather than drawing tiles that cannot work. Declaring the
 placement is how you *ask* for that surface: without it, a launch charm stays on the Tools menu where
-its author put it.
+its author put it. A second press on a running executable **raises** its window rather than starting
+a second copy, and the `200` says which happened (`launched` or `raised`); the
+[reference](charms-sdk.md) has the refusals.
 
 ---
 

@@ -74,7 +74,7 @@
       [
         "`scopeReasons`",
         "top level",
-        "one sentence per scope, **in your words**, saying why you want it — an object keyed by scope name. Shown verbatim beside the capability’s own sentence on the approval row, and again on the runtime prompt labelled *They say:*. One line, at most 200 characters, trimmed, the same set of names as `scopes`. **Required from `schemaVersion` 2**; a manifest declaring 1, or nothing, may omit it"
+        "one sentence per scope, **in your words**, saying why you want it — an object keyed by scope name. Shown verbatim beside the capability’s own sentence on the approval row, and again on the runtime prompt labeled *They say:*. One line, at most 200 characters, trimmed, the same set of names as `scopes`. **Required from `schemaVersion` 2**; a manifest declaring 1, or nothing, may omit it"
       ],
       [
         "`endpoint`",
@@ -85,6 +85,11 @@
         "`launch`",
         "top level",
         "what to start for a `proc` charm — its own executable, or a URL scheme. Absent is normal: an application whose own launcher starts it is still a `proc`. Read by the `launch` verb, under the policy below"
+      ],
+      [
+        "`launchFallback`",
+        "top level",
+        "an optional second target, in the same format as `launch`. Tried only when the first is unavailable (a missing executable, an uninstalled scheme handler) or its dispatch fails — a successful dispatch never starts both. Judged by the same policy, shown on the approval row beside the first, and a policy refusal ends the attempt rather than moving on to it"
       ],
       [
         "`registration`",
