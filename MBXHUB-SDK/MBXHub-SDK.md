@@ -1,4 +1,4 @@
-# MBXHub SDK [0.5.5.1-DV1]
+# MBXHub SDK [0.5.5.1]
 
 Charms SDK documentation and examples:
 
